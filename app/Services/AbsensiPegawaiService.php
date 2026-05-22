@@ -11,7 +11,6 @@ class AbsensiPegawaiService
     public function masuk($userId, $keterangan = null)
     {
         $pegawai = Pegawai::where('id_user', $userId)->firstOrFail();
-
         $today = Carbon::today()->toDateString();
 
         $absensi = AbsensiPegawai::where('id_pegawai', $pegawai->id_pegawai)
@@ -43,9 +42,10 @@ class AbsensiPegawaiService
     public function keluar($userId)
     {
         $pegawai = Pegawai::where('id_user', $userId)->firstOrFail();
+        $today = Carbon::today()->toDateString();
 
         $absensi = AbsensiPegawai::where('id_pegawai', $pegawai->id_pegawai)
-            ->where('tanggal', Carbon::today()->toDateString())
+            ->where('tanggal', $today)
             ->firstOrFail();
 
         if ($absensi->waktu_keluar) {
@@ -76,11 +76,25 @@ class AbsensiPegawaiService
             ->first();
     }
 
-    public function rekap($userId)
+    public function rekap($userId, $bulan = null, $tanggalMulai = null, $tanggalSelesai = null)
     {
         $pegawai = Pegawai::where('id_user', $userId)->firstOrFail();
 
-        return AbsensiPegawai::where('id_pegawai', $pegawai->id_pegawai)
+        $query = AbsensiPegawai::where('id_pegawai', $pegawai->id_pegawai);
+
+        if ($bulan) {
+            $query->whereMonth('tanggal', $bulan);
+        }
+
+        if ($tanggalMulai) {
+            $query->whereDate('tanggal', '>=', $tanggalMulai);
+        }
+
+        if ($tanggalSelesai) {
+            $query->whereDate('tanggal', '<=', $tanggalSelesai);
+        }
+
+        return $query
             ->orderBy('tanggal', 'desc')
             ->get();
     }

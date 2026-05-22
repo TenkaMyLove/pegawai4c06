@@ -41,7 +41,12 @@ class AbsensiPegawaiController extends Controller
     public function rekap(Request $request, AbsensiPegawaiService $service)
     {
         return response()->json([
-            'data' => $service->rekap($request->user()->id),
+            'data' => $service->rekap(
+                $request->user()->id,
+                $request->bulan,
+                $request->tanggal_mulai,
+                $request->tanggal_selesai
+            ),
         ]);
     }
 }
