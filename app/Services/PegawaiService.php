@@ -8,7 +8,21 @@ class PegawaiService
 {
     public function getAll()
     {
-        return Pegawai::all();
+        return Pegawai::with(['jabatan', 'absensi'])->get();
+    }
+
+    public function getById($id)
+    {
+        return Pegawai::with(['jabatan', 'absensi'])
+            ->where('id_pegawai', $id)
+            ->firstOrFail();
+    }
+
+    public function getByNip($nip)
+    {
+        return Pegawai::with(['jabatan', 'absensi'])
+            ->where('nip', $nip)
+            ->firstOrFail();
     }
 
     public function create($data)
@@ -18,7 +32,8 @@ class PegawaiService
 
     public function update($id, $data)
     {
-        $pegawai = Pegawai::where('NIP', $id)->firstOrFail();
+        $pegawai = Pegawai::where('id_pegawai', $id)->firstOrFail();
+
         $pegawai->update($data);
 
         return $pegawai;
@@ -26,7 +41,9 @@ class PegawaiService
 
     public function delete($id)
     {
-        Pegawai::destroy($id);
+        $pegawai = Pegawai::where('id_pegawai', $id)->firstOrFail();
+
+        $pegawai->delete();
 
         return ['message' => 'Deleted'];
     }

@@ -9,7 +9,9 @@ use App\Http\Controllers\API\{
     KelasSessionController,
     DosenController,
     RekapAbsensiController,
-    DashboardController
+    DashboardController,
+    PegawaiController,
+    AbsensiPegawaiController
 };
 
 Route::post('/login', [AuthController::class, 'login']);
@@ -17,10 +19,16 @@ Route::post('/qr/scan', [QrScanController::class, 'scan']);
 
 Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('/dosen', [DosenController::class, 'index']);
+    Route::get('/dosen/{id}', [DosenController::class, 'show']);
     Route::post('/dosen', [DosenController::class, 'store']);
     Route::put('/dosen/{id}', [DosenController::class, 'update']);
     Route::delete('/dosen/{id}', [DosenController::class, 'destroy']);
 
+    Route::get('/pegawai', [PegawaiController::class, 'index']);
+    Route::post('/pegawai', [PegawaiController::class, 'store']);
+    Route::get('/pegawai/{id}', [PegawaiController::class, 'show']);
+    Route::put('/pegawai/{id}', [PegawaiController::class, 'update']);
+    Route::delete('/pegawai/{id}', [PegawaiController::class, 'destroy']);
 });
 
 Route::middleware(['auth:sanctum', 'dosen'])->group(function () {

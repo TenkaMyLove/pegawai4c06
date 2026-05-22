@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Models\Pegawai;
 use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
@@ -19,11 +20,16 @@ class AuthController extends Controller
             ], 401);
         }
 
+        $pegawai = Pegawai::with('jabatan')
+            ->where('id_user', $user->id)
+            ->first();
+
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        return [
+        return response()->json([
             'token' => $token,
-            'user' => $user
-        ];
+            'user' => $user,
+            'pegawai' => $pegawai
+        ]);
     }
 }

@@ -6,24 +6,40 @@ use Illuminate\Database\Eloquent\Model;
 
 class Pegawai extends Model
 {
+    protected $connection = 'pegawai';
     protected $table = 'pegawai';
-
-    // 👉 ADD THIS (very important)
-    protected $primaryKey = 'NIP';
-    public $incrementing = false;
-    protected $keyType = 'string';
+    protected $primaryKey = 'id_pegawai';
 
     public $timestamps = false;
 
     protected $fillable = [
-        'NIP',
-        'NIK',
-        'NAMA_PEGAWAI',
-        'JENIS_KELAMIN',
-        'ID_PROVINSI',
-        'ALAMAT',
-        'ID_KAB',
-        'UNIT_KERJA',
-        'ID_USER'
+        'nip',
+        'nik',
+        'nama_pegawai',
+        'jenis_kelamin',
+        'alamat',
+        'unit_kerja',
+        'id_user',
     ];
+
+    public function jabatan()
+    {
+        return $this->belongsToMany(
+            Jabatan::class,
+            'memiliki',
+            'nip',
+            'id_jabatan',
+            'nip',
+            'id_jabatan'
+        );
+    }
+
+    public function absensi()
+    {
+        return $this->hasMany(
+            AbsensiPegawai::class,
+            'id_pegawai',
+            'id_pegawai'
+        );
+    }
 }

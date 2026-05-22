@@ -10,21 +10,26 @@ class DosenController extends Controller
 {
     public function index(PegawaiService $service)
     {
-        return $service->getAll();
+        return response()->json($service->getAll());
+    }
+
+    public function show($id, PegawaiService $service)
+    {
+        return response()->json($service->getById($id));
     }
 
     public function store(Request $request, PegawaiService $service)
     {
-        return $service->create($request->all());
+        return response()->json($service->create($request->all()), 201);
     }
 
     public function update($id, Request $request, PegawaiService $service)
     {
-        return $service->update($id, $request->all());
+        return response()->json($service->update($id, $request->all()));
     }
 
     public function destroy($id, PegawaiService $service)
     {
-        return $service->delete($id);
+        return response()->json($service->delete($id));
     }
 }
