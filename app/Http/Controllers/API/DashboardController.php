@@ -9,6 +9,15 @@ class DashboardController extends Controller
 {
     public function dosen(DashboardService $service)
     {
-        return $service->dosen();
+        return response()->json([
+            'data' => $service->dosen()
+        ]);
+    }
+
+    public function pegawai(DashboardService $service)
+    {
+        return response()->json([
+            'data' => $service->pegawai()
+        ]);
     }
 }

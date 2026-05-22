@@ -18,6 +18,7 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/qr/scan', [QrScanController::class, 'scan']);
 
 Route::middleware(['auth:sanctum', 'admin'])->group(function () {
+    Route::get('/dashboard/pegawai', [DashboardController::class, 'pegawai']);
     Route::get('/dosen', [DosenController::class, 'index']);
     Route::get('/dosen/{id}', [DosenController::class, 'show']);
     Route::post('/dosen', [DosenController::class, 'store']);
