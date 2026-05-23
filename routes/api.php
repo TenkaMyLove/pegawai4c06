@@ -48,6 +48,7 @@ Route::middleware(['auth:sanctum', 'dosen'])->group(function () {
     Route::post('/kelas/end', [KelasSessionController::class, 'end']);
     Route::post('/qr/generate', [QrController::class, 'generate']);
     Route::post('/absensi/manual', [AbsensiMahasiswaController::class, 'manual']);
+});
 
 Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/pegawai/profile', [ProfilPegawaiController::class, 'show']);
@@ -57,6 +58,5 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/pegawai/absensi/hari-ini', [AbsensiPegawaiController::class, 'hariIni']);
         Route::get('/pegawai/absensi/rekap', [AbsensiPegawaiController::class, 'rekap']);
     });
-});
 
 Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logout']);
