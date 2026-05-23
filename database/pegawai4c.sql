@@ -197,7 +197,8 @@ CREATE TABLE `failed_jobs` (
 DROP TABLE IF EXISTS `jabatan`;
 CREATE TABLE `jabatan` (
   `id_jabatan` varchar(10) NOT NULL,
-  `nama_jabatan` varchar(30) NOT NULL
+  `nama_jabatan` varchar(30) NOT NULL,
+  ADD PRIMARY KEY (`id_jabatan`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -828,12 +829,6 @@ ALTER TABLE `dosen`
 ALTER TABLE `failed_jobs`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `failed_jobs_uuid_unique` (`uuid`);
-
---
--- Indexes for table `jabatan`
---
-ALTER TABLE `jabatan`
-  ADD PRIMARY KEY (`id_jabatan`);
 
 --
 -- Indexes for table `jadwal_kuliah`
