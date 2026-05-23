@@ -64,8 +64,7 @@ services:
       - "3306"
 
     volumes:
-      - ./database:/docker-entrypoint-initdb.d
-
+      - ./db_data_kelompok2_4c:/var/lib/mysql
     networks:
       - laravel_network_kelompok2_4c
 
@@ -92,7 +91,7 @@ networks:
     driver: bridge
 
 volumes:
-  mysql_data:
+  db_data_kelompok2_4c:
     driver: local
   # redis_data:
   #   driver: local
