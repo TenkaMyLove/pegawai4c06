@@ -2,92 +2,78 @@
 
 namespace App\Services;
 
-use App\Models\Mahasiswa\AbsensiMahasiswa;
-use App\Models\Mahasiswa\Mahasiswa;
 use App\Models\Dosen;
-use App\Models\Kelas;
-use App\Models\KelasSession;
+use App\Models\PesertaKelasMk;
+use App\Models\Mahasiswa\AbsensiMahasiswa;
 use Illuminate\Support\Facades\Auth;
 
 class RekapAbsensiService
 {
-    public function getRekap($kelasId, $kodePertemuan = null)
+    private function getDosen()
     {
-        // =========================
-        // Validate dosen ownership
-        // =========================
+        return Dosen::where('id_user', Auth::id())->firstOrFail();
+    }
 
-        $user = Auth::user();
+    private function validateKelasOwnership($dosen, $idKelas, $idMk)
+    {
+        $owned = PesertaKelasMk::where('id_kelas', (string) $idKelas)
+            ->where('id_mk', (string) $idMk)
+            ->where('id_pegawai', (int) $dosen->id_pegawai)
+            ->exists();
 
-        $dosen = Dosen::where('ID_USER', $user->id)->first();
-
-        if (!$dosen) {
-            throw new \Exception("Dosen tidak ditemukan");
+        if (!$owned) {
+            throw new \Exception("Anda tidak memiliki akses ke kelas dan mata kuliah ini");
         }
+    }
 
-        $kelas = Kelas::where('ID_KELAS', $kelasId)
-            ->where('NIP_DOSEN', $dosen->NIP_DOSEN)
-            ->first();
+    public function index($idKelas, $idMk, $kodePertemuan)
+    {
+        $dosen = $this->getDosen();
 
-        if (!$kelas) {
-            throw new \Exception("Anda tidak memiliki akses ke kelas ini");
-        }
+        $this->validateKelasOwnership($dosen, $idKelas, $idMk);
 
-        // =========================
-        // Auto latest pertemuan
-        // =========================
-
-        if (!$kodePertemuan) {
-
-            $latestSession = KelasSession::where('KELAS_ID', $kelasId)
-                ->latest('KODE_PERTEMUAN')
-                ->first();
-
-            if (!$latestSession) {
-                return [
-                    'error' => 'Belum ada sesi kelas'
-                ];
-            }
-
-            $kodePertemuan = $latestSession->KODE_PERTEMUAN;
-        }
-
-        // =========================
-        // Get attendance
-        // =========================
-
-        $absensi = AbsensiMahasiswa::where('KELAS_ID', $kelasId)
-            ->where('KODE_PERTEMUAN', $kodePertemuan)
+        $peserta = PesertaKelasMk::where('id_kelas', (string) $idKelas)
+            ->where('id_mk', (string) $idMk)
+            ->orderBy('no_urut')
             ->get();
+
+        $absensi = AbsensiMahasiswa::where('KELAS_ID', (string) $idKelas)
+            ->where('ID_MK', (string) $idMk)
+            ->where('KODE_PERTEMUAN', (int) $kodePertemuan)
+            ->get()
+            ->keyBy('NIM');
 
         $summary = [
             'H' => 0,
             'I' => 0,
             'S' => 0,
-            'A' => 0
+            'A' => 0,
         ];
 
-        $data = [];
+        $data = $peserta->map(function ($mhs) use ($absensi, &$summary) {
+            $absen = $absensi->get($mhs->nim);
 
-        foreach ($absensi as $item) {
+            $status = $absen ? $absen->STATUS : 'A';
+            $metode = $absen ? $absen->METODE : null;
 
-            $mahasiswa = Mahasiswa::find($item->NIM);
+            if (isset($summary[$status])) {
+                $summary[$status]++;
+            }
 
-            $summary[$item->STATUS]++;
-
-            $data[] = [
-                'nim' => $item->NIM,
-                'nama' => $mahasiswa?->MAHASISWA_NAMA ?? 'Unknown',
-                'status' => $item->STATUS,
-                'metode' => $item->METODE
+            return [
+                'nim' => $mhs->nim,
+                'nama' => $mhs->nama,
+                'status' => $status,
+                'metode' => $metode,
             ];
-        }
+        });
 
         return [
-            'kelas_id' => $kelasId,
-            'kode_pertemuan' => $kodePertemuan,
+            'id_kelas' => (string) $idKelas,
+            'id_mk' => (string) $idMk,
+            'kode_pertemuan' => (int) $kodePertemuan,
             'summary' => $summary,
-            'data' => $data
+            'data' => $data,
         ];
     }
 }

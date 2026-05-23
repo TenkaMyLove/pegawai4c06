@@ -11,13 +11,23 @@ class RekapAbsensiController extends Controller
     public function index(Request $request, RekapAbsensiService $service)
     {
         $request->validate([
-            'kelas_id' => 'required',
-            'kode_pertemuan' => 'required'
+            'id_kelas' => 'required|string',
+            'id_mk' => 'required|string',
+            'kode_pertemuan' => 'required|integer',
         ]);
 
-        return $service->getRekap(
-            $request->kelas_id,
-            $request->kode_pertemuan
-        );
+        try {
+            return response()->json(
+                $service->index(
+                    $request->id_kelas,
+                    $request->id_mk,
+                    $request->kode_pertemuan
+                )
+            );
+        } catch (\Throwable $e) {
+            return response()->json([
+                'error' => $e->getMessage()
+            ], 400);
+        }
     }
 }
