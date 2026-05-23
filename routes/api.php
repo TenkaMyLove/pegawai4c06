@@ -16,7 +16,8 @@ use App\Http\Controllers\API\{
     MateriKelasController,
     ProfilPegawaiController,
     JadwalMengajarController,
-    AdminActivityLogController
+    AdminActivityLogController,
+    GradeController
 };
 
 Route::post('/login', [AuthController::class, 'login']);
@@ -57,6 +58,11 @@ Route::middleware(['auth:sanctum', 'dosen'])->group(function () {
     Route::post('/kelas/end', [KelasSessionController::class, 'end']);
     Route::post('/qr/generate', [QrController::class, 'generate']);
     Route::post('/absensi/manual', [AbsensiMahasiswaController::class, 'manual']);
+
+    Route::get('/nilai', [GradeController::class, 'index']);
+    Route::post('/nilai', [GradeController::class, 'store']);
+    Route::get('/nilai/settings', [GradeController::class, 'getSettings']);
+    Route::put('/nilai/settings', [GradeController::class, 'updateSettings']);
 });
 
-Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logout']);
+    Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logout']);
