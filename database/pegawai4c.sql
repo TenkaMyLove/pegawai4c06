@@ -198,7 +198,7 @@ DROP TABLE IF EXISTS `jabatan`;
 CREATE TABLE `jabatan` (
   `id_jabatan` varchar(10) NOT NULL,
   `nama_jabatan` varchar(30) NOT NULL,
-  ADD PRIMARY KEY (`id_jabatan`)
+  PRIMARY KEY (`id_jabatan`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
