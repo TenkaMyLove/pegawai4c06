@@ -70,6 +70,19 @@ services:
 
     command: --default-authentication-plugin=caching_sha2_password
 
+  phpmyadmin:
+      image: phpmyadmin/phpmyadmin
+      container_name: laravel_pma_kelompok2_4c
+      ports:
+        - "127.0.0.1:8080:80"
+      environment:
+        PMA_HOST: mysql
+        PMA_PORT: 3306
+        UPLOAD_LIMIT: 64M
+        PMA_ABSOLUTE_URI: https://api-pegawai-4c.akufarish.my.id:9001/phpmyadmin/ 
+      depends_on:
+        - mysql
+
   # redis:
   #   image: redis:7-alpine
   #   container_name: laravel_redis

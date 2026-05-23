@@ -21,8 +21,4 @@ jobs:
             
             docker compose -f docker-compose.yml exec -T php composer install --no-interaction --prefer-dist --optimize-autoloader
                         
-            docker compose -f docker-compose.prod.yml exec -T mysql mysql -u root -psecret -e "DROP DATABASE IF EXISTS app; CREATE DATABASE app;"
-            
-            docker compose -f docker-compose.yml exec -T php php artisan optimize:clear
-
             docker compose -f docker-compose.yml exec -T mysql mysql -u root -psecret app < ./database/pegawai4c.sql
