@@ -25,7 +25,7 @@ Route::post('/qr/scan', [QrScanController::class, 'scan']);
 Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('/admin/activity-logs', [AdminActivityLogController::class, 'index']);
     Route::get('/dashboard/pegawai', [DashboardController::class, 'pegawai']);
-    Route::get('/dosen', [DosenController::class, 'index']);~
+    Route::get('/dosen', [DosenController::class, 'index']);
     Route::get('/dosen/{id}', [DosenController::class, 'show']);
     Route::post('/dosen', [DosenController::class, 'store']);
     Route::put('/dosen/{id}', [DosenController::class, 'update']);
@@ -33,11 +33,11 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
 
     Route::get('/pegawai', [PegawaiController::class, 'index']);
     Route::post('/pegawai', [PegawaiController::class, 'store']);
-    Route::get('/pegawai/{id}', [PegawaiController::class, 'show']);~
+    Route::get('/pegawai/{id}', [PegawaiController::class, 'show']);
     Route::put('/pegawai/{id}', [PegawaiController::class, 'update']);
     Route::delete('/pegawai/{id}', [PegawaiController::class, 'destroy']);
 });
-~
+
 Route::middleware(['auth:sanctum', 'dosen'])->group(function () {
     Route::get('/jadwal-mengajar', [JadwalMengajarController::class, 'index']);
     Route::get('/dashboard/dosen', [DashboardController::class, 'dosen']);
