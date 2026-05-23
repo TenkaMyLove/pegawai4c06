@@ -82,6 +82,8 @@ services:
         PMA_ABSOLUTE_URI: https://api-pegawai-4c.akufarish.my.id:9001/phpmyadmin/ 
       depends_on:
         - mysql
+      networks:
+        - laravel_network_kelompok2_4c
 
   # redis:
   #   image: redis:7-alpine
