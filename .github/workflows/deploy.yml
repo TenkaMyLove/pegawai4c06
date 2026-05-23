@@ -13,7 +13,7 @@ jobs:
         with:
           host: ${{ secrets.VPS_HOST }}
           username: root
-          key: ${{ secrets.VPS_KELOMPOK2-4C }}
+          key: ${{ secrets.VPS_KELOMPOK2_4C }}
           script: |
             cd /root/kelompok2-4c/pbl-pegawai-4c
             
