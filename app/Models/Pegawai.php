@@ -36,11 +36,20 @@ class Pegawai extends Model
     }
 
     public function absensi()
-    {
-        return $this->hasMany(
-            AbsensiPegawai::class,
-            'id_pegawai',
-            'id_pegawai'
-        );
-    }
+{
+    return $this->hasMany(
+        AbsensiPegawai::class,
+        'id_pegawai',
+        'id_pegawai'
+    );
+}
+
+public function dosen()
+{
+    return $this->hasOne(
+        Dosen::class,
+        'id_pegawai',
+        'id_pegawai'
+    );
+}
 }

@@ -22,6 +22,15 @@ use App\Http\Controllers\API\{
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/qr/scan', [QrScanController::class, 'scan']);
 
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::get('/pegawai/profile', [ProfilPegawaiController::class, 'show']);
+    Route::put('/pegawai/profile', [ProfilPegawaiController::class, 'update']);    
+    Route::post('/pegawai/absensi/masuk', [AbsensiPegawaiController::class, 'masuk']);
+    Route::post('/pegawai/absensi/keluar', [AbsensiPegawaiController::class, 'keluar']);
+    Route::get('/pegawai/absensi/hari-ini', [AbsensiPegawaiController::class, 'hariIni']);
+    Route::get('/pegawai/absensi/rekap', [AbsensiPegawaiController::class, 'rekap']);
+});
+
 Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('/admin/activity-logs', [AdminActivityLogController::class, 'index']);
     Route::get('/dashboard/pegawai', [DashboardController::class, 'pegawai']);
@@ -49,14 +58,5 @@ Route::middleware(['auth:sanctum', 'dosen'])->group(function () {
     Route::post('/qr/generate', [QrController::class, 'generate']);
     Route::post('/absensi/manual', [AbsensiMahasiswaController::class, 'manual']);
 });
-
-Route::middleware(['auth:sanctum'])->group(function () {
-        Route::get('/pegawai/profile', [ProfilPegawaiController::class, 'show']);
-        Route::put('/pegawai/profile', [ProfilPegawaiController::class, 'update']);    
-        Route::post('/pegawai/absensi/masuk', [AbsensiPegawaiController::class, 'masuk']);
-        Route::post('/pegawai/absensi/keluar', [AbsensiPegawaiController::class, 'keluar']);
-        Route::get('/pegawai/absensi/hari-ini', [AbsensiPegawaiController::class, 'hariIni']);
-        Route::get('/pegawai/absensi/rekap', [AbsensiPegawaiController::class, 'rekap']);
-    });
 
 Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logout']);
