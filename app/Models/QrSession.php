@@ -10,8 +10,9 @@ class QrSession extends Model
 
     protected $fillable = [
         'KELAS_ID',
+        'ID_MK',
         'KODE_PERTEMUAN',
         'TOKEN',
-        'EXPIRED_AT'
+        'EXPIRED_AT',
     ];
 }

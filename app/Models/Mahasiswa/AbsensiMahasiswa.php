@@ -14,6 +14,7 @@ class AbsensiMahasiswa extends Model
 
     protected $fillable = [
         'NIM',
+        'ID_MK',
         'KELAS_ID',
         'KODE_PERTEMUAN',
         'TANGGAL',

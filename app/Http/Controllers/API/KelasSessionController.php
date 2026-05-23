@@ -11,26 +11,44 @@ class KelasSessionController extends Controller
     public function start(Request $request, KelasSessionService $service)
     {
         $request->validate([
-            'kelas_id' => 'required'
+            'id_kelas' => 'required|string',
+            'id_mk' => 'required|string',
         ]);
 
         try {
-            return $service->start($request->kelas_id);
+            return response()->json([
+                'message' => 'Sesi kelas berhasil dimulai',
+                'data' => $service->start(
+                    $request->id_kelas,
+                    $request->id_mk
+                )
+            ]);
         } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 400);
+            return response()->json([
+                'error' => $e->getMessage()
+            ], 400);
         }
     }
 
     public function end(Request $request, KelasSessionService $service)
     {
         $request->validate([
-            'kelas_id' => 'required'
+            'id_kelas' => 'required|string',
+            'id_mk' => 'required|string',
         ]);
 
         try {
-            return $service->end($request->kelas_id);
+            return response()->json([
+                'message' => 'Sesi kelas berhasil diakhiri',
+                'data' => $service->end(
+                    $request->id_kelas,
+                    $request->id_mk
+                )
+            ]);
         } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 400);
+            return response()->json([
+                'error' => $e->getMessage()
+            ], 400);
         }
     }
 }

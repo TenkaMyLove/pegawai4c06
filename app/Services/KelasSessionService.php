@@ -4,30 +4,38 @@ namespace App\Services;
 
 use App\Models\KelasSession;
 use App\Models\Dosen;
-use App\Models\Kelas;
+use App\Models\PesertaKelasMk;
 use Illuminate\Support\Facades\Auth;
 
 class KelasSessionService
 {
-    public function start($kelasId)
+    private function getDosen()
     {
         $user = Auth::user();
 
-        $dosen = Dosen::where('ID_USER', $user->id)->first();
+        return Dosen::where('id_user', $user->id)->firstOrFail();
+    }
 
-        if (!$dosen) {
-            throw new \Exception("Dosen tidak ditemukan");
+    private function validateKelasOwnership($dosen, $kelasId, $mkId)
+    {
+        $owned = PesertaKelasMk::where('id_kelas', (string) $kelasId)
+            ->where('id_mk', (string) $mkId)
+            ->where('id_pegawai', (int) $dosen->id_pegawai)
+            ->exists();
+
+        if (!$owned) {
+            throw new \Exception("Anda tidak memiliki akses ke kelas dan mata kuliah ini");
         }
+    }
 
-        $kelas = Kelas::where('ID_KELAS', $kelasId)
-            ->where('NIP_DOSEN', $dosen->NIP_DOSEN)
-            ->first();
+    public function start($kelasId, $mkId)
+    {
+        $dosen = $this->getDosen();
 
-        if (!$kelas) {
-            throw new \Exception("Anda tidak memiliki akses ke kelas ini");
-        }
+        $this->validateKelasOwnership($dosen, $kelasId, $mkId);
 
         $active = KelasSession::where('KELAS_ID', $kelasId)
+            ->where('ID_MK', $mkId)
             ->where('IS_ACTIVE', true)
             ->exists();
 
@@ -36,37 +44,28 @@ class KelasSessionService
         }
 
         $last = KelasSession::where('KELAS_ID', $kelasId)
+            ->where('ID_MK', $mkId)
             ->max('KODE_PERTEMUAN');
 
         $next = $last ? $last + 1 : 1;
 
         return KelasSession::create([
             'KELAS_ID' => $kelasId,
+            'ID_MK' => $mkId,
             'KODE_PERTEMUAN' => $next,
             'STARTED_AT' => now(),
             'IS_ACTIVE' => true
         ]);
     }
 
-    public function end($kelasId)
+    public function end($kelasId, $mkId)
     {
-        $user = Auth::user();
+        $dosen = $this->getDosen();
 
-        $dosen = Dosen::where('ID_USER', $user->id)->first();
-
-        if (!$dosen) {
-            throw new \Exception("Dosen tidak ditemukan");
-        }
-
-        $kelas = Kelas::where('ID_KELAS', $kelasId)
-            ->where('NIP_DOSEN', $dosen->NIP_DOSEN)
-            ->first();
-
-        if (!$kelas) {
-            throw new \Exception("Anda tidak memiliki akses ke kelas ini");
-        }
+        $this->validateKelasOwnership($dosen, $kelasId, $mkId);
 
         $session = KelasSession::where('KELAS_ID', $kelasId)
+            ->where('ID_MK', $mkId)
             ->where('IS_ACTIVE', true)
             ->first();
 
@@ -82,9 +81,10 @@ class KelasSessionService
         return $session;
     }
 
-    public function getActive($kelasId)
+    public function getActive($kelasId, $mkId)
     {
         return KelasSession::where('KELAS_ID', $kelasId)
+            ->where('ID_MK', $mkId)
             ->where('IS_ACTIVE', true)
             ->first();
     }

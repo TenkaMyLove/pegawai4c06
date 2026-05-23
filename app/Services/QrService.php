@@ -4,14 +4,26 @@ namespace App\Services;
 
 use App\Models\QrSession;
 use App\Models\Dosen;
-use App\Models\Kelas;
+use App\Models\PesertaKelasMk;
 use App\Services\KelasSessionService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
 class QrService
 {
-    public function generate($kelasId)
+    private function validateKelasOwnership($dosen, $kelasId, $mkId)
+    {
+        $owned = PesertaKelasMk::where('id_kelas', (string) $kelasId)
+            ->where('id_mk', (string) $mkId)
+            ->where('id_pegawai', (int) $dosen->id_pegawai)
+            ->exists();
+
+        if (!$owned) {
+            throw new \Exception("Anda tidak memiliki akses ke kelas dan mata kuliah ini");
+        }
+    }
+
+    public function generate($kelasId, $mkId)
     {
         // =========================
         // Validate dosen ownership
@@ -19,26 +31,20 @@ class QrService
 
         $user = Auth::user();
 
-        $dosen = Dosen::where('ID_USER', $user->id)->first();
+        $dosen = Dosen::where('id_user', $user->id)->first();
 
         if (!$dosen) {
             throw new \Exception("Dosen tidak ditemukan");
         }
 
-        $kelas = Kelas::where('ID_KELAS', $kelasId)
-            ->where('NIP_DOSEN', $dosen->NIP_DOSEN)
-            ->first();
-
-        if (!$kelas) {
-            throw new \Exception("Anda tidak memiliki akses ke kelas ini");
-        }
+        $this->validateKelasOwnership($dosen, $kelasId, $mkId);
 
         // =========================
         // Check active kelas session
         // =========================
 
         $kelasSession = (new KelasSessionService())
-            ->getActive($kelasId);
+            ->getActive($kelasId, $mkId);
 
         if (!$kelasSession) {
             throw new \Exception("Kelas belum dimulai");
@@ -51,6 +57,7 @@ class QrService
         // =========================
 
         QrSession::where('KELAS_ID', $kelasId)
+            ->where('ID_MK', $mkId)
             ->where('EXPIRED_AT', '>', now())
             ->update([
                 'EXPIRED_AT' => now()
@@ -62,9 +69,10 @@ class QrService
 
         $qr = QrSession::create([
             'KELAS_ID' => $kelasId,
+            'ID_MK' => $mkId,
             'KODE_PERTEMUAN' => $kodePertemuan,
             'TOKEN' => Str::random(40),
-            'EXPIRED_AT' => now()->addSeconds(10)
+            'EXPIRED_AT' => now()->addMinutes(5)
         ]);
 
         // =========================
@@ -73,7 +81,8 @@ class QrService
 
         return [
             'message' => 'QR berhasil dibuat',
-            'kelas_id' => $kelasId,
+            'id_kelas' => $kelasId,
+            'id_mk' => $mkId,
             'kode_pertemuan' => $kodePertemuan,
             'token' => $qr->TOKEN,
             'expired_at' => $qr->EXPIRED_AT

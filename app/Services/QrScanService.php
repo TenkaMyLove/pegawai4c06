@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Models\QrSession;
 use App\Models\KelasSession;
-use App\Models\Mahasiswa\Mahasiswa;
+use App\Models\PesertaKelasMk;
 use App\Models\Mahasiswa\AbsensiMahasiswa;
 
 class QrScanService
@@ -26,6 +26,7 @@ class QrScanService
 
             // 3. Check active class session
             $kelasSession = KelasSession::where('KELAS_ID', $session->KELAS_ID)
+                ->where('ID_MK', $session->ID_MK)
                 ->where('IS_ACTIVE', true)
                 ->first();
 
@@ -34,19 +35,18 @@ class QrScanService
             }
 
             // 4. Ensure pertemuan matches
-            if ($kelasSession->KODE_PERTEMUAN !== $session->KODE_PERTEMUAN) {
+            if ((int) $kelasSession->KODE_PERTEMUAN !== (int) $session->KODE_PERTEMUAN) {
                 throw new \Exception("QR tidak sesuai sesi aktif");
             }
 
-            // 5. Check mahasiswa
-            $mahasiswa = Mahasiswa::where('NIM', $nim)->first();
+            // 5. Check mahasiswa registered in kelas + mk
+            $peserta = PesertaKelasMk::where('nim', $nim)
+                ->where('id_kelas', (string) $session->KELAS_ID)
+                ->where('id_mk', (string) $session->ID_MK)
+                ->first();
 
-            if (!$mahasiswa) {
-                throw new \Exception("Mahasiswa tidak ditemukan");
-            }
-
-            if ($mahasiswa->KODE_KELAS !== $session->KELAS_ID) {
-                throw new \Exception("Mahasiswa tidak terdaftar di kelas ini");
+            if (!$peserta) {
+                throw new \Exception("Mahasiswa tidak terdaftar di kelas dan mata kuliah ini");
             }
 
             // 6. Prevent duplicate
@@ -54,7 +54,9 @@ class QrScanService
                 'NIM' => $nim,
                 'KELAS_ID' => $session->KELAS_ID,
                 'KODE_PERTEMUAN' => $session->KODE_PERTEMUAN
-            ])->exists();
+            ])
+            ->where('ID_MK', $session->ID_MK)
+            ->exists();
 
             if ($exists) {
                 throw new \Exception("Sudah absen di pertemuan ini");
@@ -64,6 +66,7 @@ class QrScanService
             $absen = AbsensiMahasiswa::create([
                 'NIM' => $nim,
                 'KELAS_ID' => $session->KELAS_ID,
+                'ID_MK' => $session->ID_MK,
                 'KODE_PERTEMUAN' => $session->KODE_PERTEMUAN,
                 'TANGGAL' => now()->toDateString(),
                 'STATUS' => 'H',

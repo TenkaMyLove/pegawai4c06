@@ -1,34 +1,78 @@
 <?php
 
-namespace App\Models;
+namespace App\Services;
 
-use Illuminate\Database\Eloquent\Model;
-use App\Models\User;
+use App\Models\Dosen;
+use App\Models\PesertaKelasMk;
+use App\Models\Mahasiswa\AbsensiMahasiswa;
+use Illuminate\Support\Facades\Auth;
 
-class Pegawai extends Model
+class AbsensiMahasiswaService
 {
-    protected $table = 'pegawai';
-
-    protected $primaryKey = 'NIP';
-    public $incrementing = false;
-    protected $keyType = 'string';
-
-    public $timestamps = false;
-
-    protected $fillable = [
-        'NIP',
-        'NIK',
-        'NAMA_PEGAWAI',
-        'JENIS_KELAMIN',
-        'ID_PROVINSI',
-        'ALAMAT',
-        'ID_KAB',
-        'UNIT_KERJA',
-        'ID_USER'
-    ];
-
-    public function user()
+    private function getDosen()
     {
-        return $this->belongsTo(User::class, 'ID_USER');
+        return Dosen::where('id_user', Auth::id())->firstOrFail();
+    }
+
+    private function validateKelasOwnership($dosen, $idKelas, $idMk)
+    {
+        $owned = PesertaKelasMk::where('id_kelas', (string) $idKelas)
+            ->where('id_mk', (string) $idMk)
+            ->where('id_pegawai', (int) $dosen->id_pegawai)
+            ->exists();
+
+        if (!$owned) {
+            throw new \Exception("Anda tidak memiliki akses ke kelas dan mata kuliah ini");
+        }
+    }
+
+    private function validateMahasiswaInClass($nim, $idKelas, $idMk)
+    {
+        $exists = PesertaKelasMk::where('nim', $nim)
+            ->where('id_kelas', (string) $idKelas)
+            ->where('id_mk', (string) $idMk)
+            ->exists();
+
+        if (!$exists) {
+            throw new \Exception("Mahasiswa {$nim} tidak terdaftar di kelas dan mata kuliah ini");
+        }
+    }
+
+    public function manual($idKelas, $idMk, array $data)
+    {
+        $dosen = $this->getDosen();
+
+        $this->validateKelasOwnership($dosen, $idKelas, $idMk);
+
+        $results = [];
+
+        foreach ($data as $item) {
+            $nim = $item['nim'];
+            $status = $item['status'];
+            $kodePertemuan = $item['kode_pertemuan'];
+
+            $this->validateMahasiswaInClass($nim, $idKelas, $idMk);
+
+            $absen = AbsensiMahasiswa::updateOrCreate(
+                [
+                    'NIM' => $nim,
+                    'KELAS_ID' => $idKelas,
+                    'ID_MK' => $idMk,
+                    'KODE_PERTEMUAN' => $kodePertemuan,
+                ],
+                [
+                    'TANGGAL' => now()->toDateString(),
+                    'STATUS' => $status,
+                    'METODE' => 'MANUAL',
+                ]
+            );
+
+            $results[] = $absen;
+        }
+
+        return [
+            'message' => 'Absensi manual berhasil disimpan',
+            'data' => $results,
+        ];
     }
 }

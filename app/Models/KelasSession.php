@@ -8,9 +8,10 @@ class KelasSession extends Model
 {
     protected $fillable = [
         'KELAS_ID',
+        'ID_MK',
         'KODE_PERTEMUAN',
-        'IS_ACTIVE',
         'STARTED_AT',
-        'ENDED_AT'
+        'ENDED_AT',
+        'IS_ACTIVE',
     ];
 }
