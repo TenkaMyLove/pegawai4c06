@@ -1,8 +1,9 @@
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'https://pegawai4c06.vps-poliban.my.id',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'https://api-pegawai-4c.akufarish.my.id:9001/',
   timeout: 20000,
+  withCredentials: true,
   headers: {
     Accept: 'application/json',
     'Content-Type': 'application/json',
