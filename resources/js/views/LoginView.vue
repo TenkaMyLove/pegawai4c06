@@ -6,7 +6,7 @@
 
         <div class="hero-content">
           <div class="brand-large">
-            <img src="/assets/images/logo poliban.png" alt="Logo Poliban" />
+            <img src="../assets/images/logo-poliban.png" alt="Logo Poliban" />
             <div>
               <h1>Simpadu</h1>
               <p>Platform Akademik Digital</p>

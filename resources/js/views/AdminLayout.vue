@@ -2,7 +2,7 @@
   <div class="dashboard-layout">
     <aside class="side-nav">
       <div class="mini-brand">
-        <img src="/assets/images/logo poliban.png" alt="Logo" />
+        <img src="../assets/images/logo-poliban.png" alt="Logo" />
         <div>
           <h3>Simpadu</h3>
           <span>Admin Akademik Digital</span>
