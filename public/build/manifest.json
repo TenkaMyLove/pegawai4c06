@@ -1,6 +1,6 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app-BkI66axF.css",
+    "file": "assets/app-CUcY3Re_.css",
     "name": "app",
     "names": [
       "app.css"
@@ -9,19 +9,12 @@
     "isEntry": true
   },
   "resources/js/app.js": {
-    "file": "assets/app-CuzOJ0rC.js",
+    "file": "assets/app-B3BahrZ2.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
     "css": [
-      "assets/app-CS75HLE9.css"
-    ],
-    "assets": [
-      "assets/logo-poliban-BnW8dd3Q.png"
+      "assets/app-BHy2tYbF.css"
     ]
-  },
-  "resources/js/assets/images/logo-poliban.png": {
-    "file": "assets/logo-poliban-BnW8dd3Q.png",
-    "src": "resources/js/assets/images/logo-poliban.png"
   }
 }

@@ -2,7 +2,7 @@
   <div class="dashboard-layout">
     <aside class="side-nav">
       <div class="mini-brand">
-        <img src="../assets/images/logo-poliban.png" alt="Logo" />
+        <img :src="logoUrl" alt="Logo" />
         <div>
           <h3>Simpadu</h3>
           <span>Dosen Akademik Digital</span>
@@ -472,6 +472,7 @@
 </template>
 
 <script setup>
+const logoUrl = '/assets/images/logo-poliban.png'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../services/api'
@@ -1678,3 +1679,4 @@ watch(
   }
 }
 </style>
+
