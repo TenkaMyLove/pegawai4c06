@@ -613,55 +613,57 @@
           <div class="white-card nilai-list-card">
             <h3>Daftar Nilai</h3>
 
-            <div
-              v-for="item in daftarNilai"
-              :key="item._key"
-              class="nilai-item nilai-item-full"
-            >
-              <div class="nilai-info">
-                <strong>{{ item.nama || '-' }}</strong>
-                <p>
-                  {{ item.nim || '-' }} · id_kelas {{ item.id_kelas || NILAI_ID_KELAS }} · id_mk {{ item.id_mk || NILAI_ID_MK }}
-                </p>
+            <div class="nilai-list-scroll">
+              <div
+                v-for="item in daftarNilai"
+                :key="item._key"
+                class="nilai-item nilai-item-full"
+              >
+                <div class="nilai-info">
+                  <strong>{{ item.nama || '-' }}</strong>
+                  <p>
+                    {{ item.nim || '-' }} · id_kelas {{ item.id_kelas || NILAI_ID_KELAS }} · id_mk {{ item.id_mk || NILAI_ID_MK }}
+                  </p>
+                </div>
+
+                <div class="nilai-breakdown nilai-breakdown-five">
+                  <div>
+                    <small>Partisipasi</small>
+                    <b>{{ item.participation_score ?? 0 }}</b>
+                  </div>
+
+                  <div>
+                    <small>Tugas</small>
+                    <b>{{ item.assignment_score ?? 0 }}</b>
+                  </div>
+
+                  <div>
+                    <small>Quiz</small>
+                    <b>{{ item.quiz_score ?? 0 }}</b>
+                  </div>
+
+                  <div>
+                    <small>UTS</small>
+                    <b>{{ item.uts_score ?? 0 }}</b>
+                  </div>
+
+                  <div>
+                    <small>UAS</small>
+                    <b>{{ item.uas_score ?? 0 }}</b>
+                  </div>
+                </div>
+
+                <div class="nilai-score nilai-score-grade">
+                  <small>Grade</small>
+                  <b>{{ item.grade || '-' }}</b>
+                  <span>Final {{ item.final_score ?? '-' }}</span>
+                </div>
               </div>
 
-              <div class="nilai-breakdown nilai-breakdown-five">
-                <div>
-                  <small>Partisipasi</small>
-                  <b>{{ item.participation_score ?? 0 }}</b>
-                </div>
-
-                <div>
-                  <small>Tugas</small>
-                  <b>{{ item.assignment_score ?? 0 }}</b>
-                </div>
-
-                <div>
-                  <small>Quiz</small>
-                  <b>{{ item.quiz_score ?? 0 }}</b>
-                </div>
-
-                <div>
-                  <small>UTS</small>
-                  <b>{{ item.uts_score ?? 0 }}</b>
-                </div>
-
-                <div>
-                  <small>UAS</small>
-                  <b>{{ item.uas_score ?? 0 }}</b>
-                </div>
-              </div>
-
-              <div class="nilai-score nilai-score-grade">
-                <small>Grade</small>
-                <b>{{ item.grade || '-' }}</b>
-                <span>Final {{ item.final_score ?? '-' }}</span>
-              </div>
+              <p v-if="daftarNilai.length === 0 && !loading" class="empty-history">
+                Belum ada nilai yang diinput.
+              </p>
             </div>
-
-            <p v-if="daftarNilai.length === 0 && !loading" class="empty-history">
-              Belum ada nilai yang diinput.
-            </p>
           </div>
         </div>
       </section>
@@ -1458,6 +1460,7 @@ const nilaiLocalKey = computed(() => {
 })
 
 const PESERTA_KELAS_MK_ENDPOINTS = [
+  'https://belajarapi.agussbn.my.id/api/pesertakelasmk',
   '/kelas-api/api/pesertakelasmk',
   '/kelas-api/pesertakelasmk',
   '/kelas-api/api/peserta-kelas-mk',
@@ -6880,6 +6883,39 @@ const logoUrl = '/assets/images/logo-poliban.png' dan semua function tidak diuba
   .search-box {
     max-width: none;
   }
+}
+
+/* Scroll adjustments for Input Nilai student list */
+.nilai-list-card {
+  max-height: calc(100vh - 190px) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 24px !important;
+}
+
+.nilai-list-scroll {
+  overflow-y: auto !important;
+  flex: 1 !important;
+  padding-right: 8px !important;
+  margin-top: 12px;
+}
+
+/* Custom scrollbar styling for a premium aesthetic */
+.nilai-list-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.nilai-list-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.nilai-list-scroll::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+}
+
+.nilai-list-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
 }
 
 </style>
