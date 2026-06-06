@@ -15,7 +15,8 @@ class AdminOnly
      */
     public function handle($request, Closure $next)
     {
-    if (!$request->user() || $request->user()->role !== 'admin') {
+    $allowedRoles = ['admin', 'super_admin', 'admin_akademik', 'admin_pegawai'];
+    if (!$request->user() || !in_array($request->user()->role, $allowedRoles)) {
         return response()->json(['error' => 'Unauthorized'], 403);
     }
 

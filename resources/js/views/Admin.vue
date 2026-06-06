@@ -108,15 +108,17 @@
               <RouterLink to="/admin/pegawai">Kelola pegawai</RouterLink>
             </div>
 
-            <div v-for="item in jabatanSummary" :key="item.nama" class="summary-row">
-              <div>
-                <strong>{{ item.nama }}</strong>
-                <p>{{ item.total }} pegawai</p>
+            <div class="admin-dashboard-scroll">
+              <div v-for="item in jabatanSummary" :key="item.nama" class="summary-row">
+                <div>
+                  <strong>{{ item.nama }}</strong>
+                  <p>{{ item.total }} pegawai</p>
+                </div>
+                <span>{{ item.total }}</span>
               </div>
-              <span>{{ item.total }}</span>
-            </div>
 
-            <p v-if="jabatanSummary.length === 0" class="empty">Belum ada data jabatan.</p>
+              <p v-if="jabatanSummary.length === 0" class="empty">Belum ada data jabatan.</p>
+            </div>
           </article>
 
           <article class="card">
@@ -125,18 +127,20 @@
               <RouterLink to="/admin/rekap">Lihat rekap</RouterLink>
             </div>
 
-            <div v-for="item in presensiHariIni.slice(0, 6)" :key="item._key" class="history-row">
-              <div>
-                <strong>{{ item.nama || '-' }}</strong>
-                <p>{{ item.tanggal || item.created_at || '-' }} · {{ item.jenis || '-' }}</p>
+            <div class="admin-dashboard-scroll">
+              <div v-for="item in presensiHariIni.slice(0, 20)" :key="item._key" class="history-row">
+                <div>
+                  <strong>{{ item.nama || '-' }}</strong>
+                  <p>{{ item.tanggal || item.created_at || '-' }} · {{ item.jenis || '-' }}</p>
+                </div>
+
+                <span :class="['pill', statusClass(item.status)]">
+                  {{ labelStatus(item.status) }}
+                </span>
               </div>
 
-              <span :class="['pill', statusClass(item.status)]">
-                {{ labelStatus(item.status) }}
-              </span>
+              <p v-if="presensiHariIni.length === 0" class="empty">Belum ada presensi hari ini.</p>
             </div>
-
-            <p v-if="presensiHariIni.length === 0" class="empty">Belum ada presensi hari ini.</p>
           </article>
         </div>
       </section>
@@ -393,15 +397,17 @@
         </div>
 
         <div class="card">
-          <div v-for="log in logList" :key="log._key" class="log-row">
-            <div>
-              <strong>{{ log.title }}</strong>
-              <p>{{ log.time }}</p>
+          <div class="admin-logs-scroll">
+            <div v-for="log in logList" :key="log._key" class="log-row">
+              <div>
+                <strong>{{ log.title }}</strong>
+                <p>{{ log.time }}</p>
+              </div>
+              <span>{{ log.type }}</span>
             </div>
-            <span>{{ log.type }}</span>
-          </div>
 
-          <p v-if="logList.length === 0" class="empty">Belum ada aktivitas.</p>
+            <p v-if="logList.length === 0" class="empty">Belum ada aktivitas.</p>
+          </div>
         </div>
       </section>
 
@@ -2713,6 +2719,61 @@ textarea {
   cursor:pointer;
 }
 .danger-btn:hover{ background: rgba(239,68,68,.08); }
+
+/* Custom Scroll adjustments for AdminLayout components */
+.admin-dashboard-scroll {
+  max-height: 350px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.admin-logs-scroll {
+  max-height: calc(100vh - 240px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.table-card {
+  max-height: calc(100vh - 280px);
+  overflow-y: auto;
+  overflow-x: auto;
+  position: relative;
+}
+
+.table-card table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #f8fafc;
+  box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.05);
+}
+
+/* Custom premium scrollbar for AdminLayout scroll containers */
+.admin-dashboard-scroll::-webkit-scrollbar,
+.admin-logs-scroll::-webkit-scrollbar,
+.table-card::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.admin-dashboard-scroll::-webkit-scrollbar-track,
+.admin-logs-scroll::-webkit-scrollbar-track,
+.table-card::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.admin-dashboard-scroll::-webkit-scrollbar-thumb,
+.admin-logs-scroll::-webkit-scrollbar-thumb,
+.table-card::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+}
+
+.admin-dashboard-scroll::-webkit-scrollbar-thumb:hover,
+.admin-logs-scroll::-webkit-scrollbar-thumb:hover,
+.table-card::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
 </style>
 
 

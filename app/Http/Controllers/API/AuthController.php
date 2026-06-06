@@ -37,7 +37,7 @@ class AuthController extends Controller
             'pegawai' => $pegawai,
             'dosen' => $dosen,
             'permissions' => [
-                'is_admin' => $user->role === 'admin',
+                'is_admin' => in_array($user->role, ['admin', 'super_admin', 'admin_akademik', 'admin_pegawai']),
                 'is_pegawai' => $pegawai !== null,
                 'is_dosen' => $dosen !== null,
             ],
