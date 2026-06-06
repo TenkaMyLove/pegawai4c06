@@ -143,6 +143,17 @@ const routes = [
       role: 'dosen',
     },
   },
+  {
+    path: '/dosen/validasi-krs',
+    component: DosenLayout,
+    props: {
+      page: 'validasi-krs',
+    },
+    meta: {
+      role: 'dosen',
+    },
+  },
+
 
   // PEGAWAI
   {

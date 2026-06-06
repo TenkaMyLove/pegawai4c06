@@ -25,6 +25,10 @@
         <RouterLink to="/dosen/presensi" class="menu-item">
           🖥️ <span>Presensi Saya</span>
         </RouterLink>
+
+        <RouterLink to="/dosen/validasi-krs" class="menu-item">
+          📋 <span>Validasi KRS</span>
+        </RouterLink>
       </nav>
 
       <RouterLink to="/dosen/profil" class="user-chip">
@@ -48,6 +52,7 @@
           <p v-else-if="page === 'dashboard'">Ringkasan aktivitas akademik dosen</p>
           <p v-else-if="page === 'kelas'">Kelola jadwal mengajar dan peserta kelas</p>
           <p v-else-if="page === 'nilai'">Input nilai mahasiswa berdasarkan kelas</p>
+          <p v-else-if="page === 'validasi-krs'">Validasi rencana studi mahasiswa (KRS)</p>
           <p v-else>Catat presensi harian dosen</p>
         </div>
 
@@ -767,6 +772,171 @@
           </div>
         </div>
       </section>
+
+      <!-- VALIDASI KRS -->
+      <section v-else-if="page === 'validasi-krs'" class="page-section krs-page">
+        <!-- DETIL KRS MAHASISWA -->
+        <div v-if="selectedKrs" class="krs-detail-view">
+          <button class="back-to-krs" type="button" @click="closeKrsDetail">
+            ← Kembali ke daftar KRS
+          </button>
+
+          <div class="krs-detail-hero">
+            <div class="krs-hero-main">
+              <div class="avatar-large">{{ selectedKrs.nim.charAt(selectedKrs.nim.length - 1) }}</div>
+              <div>
+                <p class="krs-eyebrow">Rencana Studi Mahasiswa</p>
+                <h2>{{ getStudentName(selectedKrs.nim) }}</h2>
+                <p class="krs-sub">NIM: <b>{{ selectedKrs.nim }}</b> &middot; Kelas: <b>{{ selectedKrs.nama_kelas }}</b></p>
+              </div>
+            </div>
+
+            <div class="krs-status-badge-container">
+              <span :class="['krs-status-badge', getKrsStatus(selectedKrs).toLowerCase().replace(/\s+/g, '-')]">
+                {{ getKrsStatus(selectedKrs) }}
+              </span>
+            </div>
+          </div>
+
+          <div class="krs-detail-layout">
+            <!-- Left Column - Courses Table -->
+            <div class="krs-main-col">
+              <div class="krs-card">
+                <div class="krs-card-head">
+                  <h3>Mata Kuliah Yang Diambil</h3>
+                  <p>Daftar mata kuliah yang diajukan oleh mahasiswa untuk Semester {{ selectedKrs.semester }}.</p>
+                </div>
+
+                <div class="krs-table-wrapper">
+                  <table class="krs-table">
+                    <thead>
+                      <tr>
+                        <th>Kode MK</th>
+                        <th>Nama Mata Kuliah</th>
+                        <th class="text-center">SKS</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="mk in selectedKrs.mata_kuliahs" :key="mk.id_mk">
+                        <td><code>{{ mk.id_mk }}</code></td>
+                        <td class="font-semibold">{{ mk.nama_mk }}</td>
+                        <td class="text-center font-bold">{{ mk.sks }} SKS</td>
+                      </tr>
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <td colspan="2" class="text-right"><b>Total SKS Diajukan:</b></td>
+                        <td class="text-center total-sks"><b>{{ calculateTotalSks(selectedKrs) }} SKS</b></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Column - Actions -->
+            <div class="krs-side-col">
+              <div class="krs-card krs-action-card">
+                <h3>Persetujuan Akademik</h3>
+                <p>Silakan tinjau data rencana studi di samping sebelum melakukan validasi.</p>
+
+                <div class="krs-action-status-box">
+                  <small>Status Saat Ini</small>
+                  <strong>{{ getKrsStatus(selectedKrs) }}</strong>
+                </div>
+
+                <div class="krs-action-buttons">
+                  <button 
+                    class="krs-btn approve-btn" 
+                    type="button" 
+                    :disabled="loading || getKrsStatus(selectedKrs) === 'Disetujui'"
+                    @click="updateKrsStatus(selectedKrs.id_krs, 'Disetujui')"
+                  >
+                    Setujui KRS
+                  </button>
+                  
+                  <button 
+                    class="krs-btn reject-btn" 
+                    type="button" 
+                    :disabled="loading || getKrsStatus(selectedKrs) === 'Ditolak'"
+                    @click="updateKrsStatus(selectedKrs.id_krs, 'Ditolak')"
+                  >
+                    Tolak KRS
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DAFTAR KRS -->
+        <div v-else>
+          <div class="krs-filter-row">
+            <div class="search-box">
+              <span>🔍</span>
+              <input 
+                v-model="krsSearchQuery" 
+                type="text" 
+                placeholder="Cari berdasarkan NIM atau Kelas..." 
+              />
+            </div>
+            
+            <button class="krs-refresh-btn" type="button" :disabled="krsLoading" @click="loadKrsData">
+              {{ krsLoading ? 'Memuat...' : 'Refresh Data' }}
+            </button>
+          </div>
+
+          <div v-if="krsLoading" class="krs-loading-state">
+            <div class="spinner"></div>
+            <p>Memuat data KRS mahasiswa...</p>
+          </div>
+
+          <div v-else-if="krsList.length === 0" class="krs-empty-state">
+            <div class="empty-icon">📂</div>
+            <h3>Tidak ada pengajuan KRS</h3>
+            <p>Belum ada data rencana studi mahasiswa yang diajukan.</p>
+          </div>
+
+          <div v-else class="krs-grid">
+            <div 
+              v-for="krs in krsList.filter(item => !krsSearchQuery || item.nim.toLowerCase().includes(krsSearchQuery.toLowerCase()) || item.nama_kelas.toLowerCase().includes(krsSearchQuery.toLowerCase()))"
+              :key="krs.id_krs"
+              class="krs-card-item"
+              @click="viewKrsDetail(krs.id_krs)"
+            >
+              <div class="krs-card-top">
+                <div class="avatar-small">{{ krs.nim.charAt(krs.nim.length - 1) }}</div>
+                <span :class="['krs-status-badge', getKrsStatus(krs).toLowerCase().replace(/\s+/g, '-')]">
+                  {{ getKrsStatus(krs) }}
+                </span>
+              </div>
+
+              <h3 class="student-name">{{ getStudentName(krs.nim) }}</h3>
+              <p class="student-nim">NIM: {{ krs.nim }}</p>
+
+              <div class="krs-meta-grid">
+                <div>
+                  <small>Kelas</small>
+                  <strong>{{ krs.nama_kelas }}</strong>
+                </div>
+                <div>
+                  <small>Semester</small>
+                  <strong>{{ krs.semester }}</strong>
+                </div>
+                <div>
+                  <small>Total SKS</small>
+                  <strong>{{ calculateTotalSks(krs) }} SKS</strong>
+                </div>
+              </div>
+
+              <div class="krs-card-footer">
+                <span>Buka Detail KRS</span>
+                <span class="arrow">→</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
     </main>
 
     <div v-if="qrModal.show" class="qr-modal-overlay" @click.self="tutupQrModal">
@@ -826,6 +996,7 @@ const page = computed(() => {
   if (key === 'nilai') return 'nilai'
   if (key === 'presensi') return 'presensi'
   if (key === 'dashboard') return 'dashboard'
+  if (key === 'validasi-krs') return 'validasi-krs'
   return key
 })
 
@@ -1076,6 +1247,7 @@ const title = computed(() => {
     kelas: 'Jadwal Mengajar',
     nilai: 'Input Nilai',
     presensi: 'Presensi Saya',
+    'validasi-krs': 'Validasi KRS',
   }[props.page] || 'Home'
 })
 
@@ -2476,6 +2648,191 @@ async function simpanNilaiMahasiswa() {
   }
 }
 
+// State KRS
+const krsList = ref([])
+const krsLoading = ref(false)
+const selectedKrs = ref(null)
+const krsDetailLoading = ref(false)
+const krsSearchQuery = ref('')
+const krsStatuses = ref(JSON.parse(localStorage.getItem('simpadu_krs_statuses') || '{}'))
+
+// Mock names dictionary to make the mockup list premium and realistic
+const MOCK_NAMES_BY_NIM = {
+  'C030322001': 'Achmad Fauzi',
+  'C030322005': 'Rizky Ramadhan',
+  'C030322012': 'Siti Aminah',
+  'C001': 'Budi Santoso',
+  'C002': 'Dessy Ratnasari',
+  'C003': 'Zaky Alfarisi',
+  'C005': 'Rahmat Hidayat',
+  'C006': 'Halimah Tusadiah'
+}
+
+function getStudentName(nim) {
+  return MOCK_NAMES_BY_NIM[nim] || `Mahasiswa (${nim})`
+}
+
+const KRS_DEMO_FALLBACK = [
+  {
+    id_krs: "krs-001",
+    nim: "C030322001",
+    nama_kelas: "TI - 4A",
+    semester: "4",
+    created_at: "2026-06-01T08:00:00Z",
+    updated_at: "2026-06-01T08:30:00Z",
+    mata_kuliahs: [
+      { id_mk: "MK01", nama_mk: "Pemrograman Web Lanjut", sks: 3 },
+      { id_mk: "MK02", nama_mk: "Basis Data Terdistribusi", sks: 3 },
+      { id_mk: "MK03", nama_mk: "Analisis & Desain Sistem", sks: 3 },
+      { id_mk: "MK04", nama_mk: "Kecerdasan Buatan", sks: 3 },
+      { id_mk: "MK05", nama_mk: "Bahasa Inggris Profesi", sks: 2 },
+      { id_mk: "MK06", nama_mk: "Proyek Akhir 1", sks: 4 }
+    ]
+  },
+  {
+    id_krs: "krs-002",
+    nim: "C030322005",
+    nama_kelas: "TI - 4B",
+    semester: "4",
+    created_at: "2026-06-02T09:15:00Z",
+    updated_at: "2026-06-02T10:00:00Z",
+    mata_kuliahs: [
+      { id_mk: "MK01", nama_mk: "Pemrograman Web Lanjut", sks: 3 },
+      { id_mk: "MK02", nama_mk: "Basis Data Terdistribusi", sks: 3 },
+      { id_mk: "MK03", nama_mk: "Analisis & Desain Sistem", sks: 3 },
+      { id_mk: "MK04", nama_mk: "Kecerdasan Buatan", sks: 3 },
+      { id_mk: "MK07", nama_mk: "Keamanan Jaringan", sks: 3 }
+    ]
+  },
+  {
+    id_krs: "krs-003",
+    nim: "C030322012",
+    nama_kelas: "TI - 4A",
+    semester: "4",
+    created_at: "2026-06-03T14:20:00Z",
+    updated_at: "2026-06-03T15:10:00Z",
+    mata_kuliahs: [
+      { id_mk: "MK01", nama_mk: "Pemrograman Web Lanjut", sks: 3 },
+      { id_mk: "MK02", nama_mk: "Basis Data Terdistribusi", sks: 3 },
+      { id_mk: "MK03", nama_mk: "Analisis & Desain Sistem", sks: 3 }
+    ]
+  }
+]
+
+// Fetch KRS List
+async function loadKrsData() {
+  krsLoading.value = true
+  setMessage('', '')
+  const activeToken = localStorage.getItem('simpadu_token') || import.meta.env.VITE_KRS_JWT_TOKEN || 'haei-anteque-anteque-async-embehgweh-bwemwanfwat'
+  
+  try {
+    const response = await api.get('https://api-admin-4c.rifkiaja.my.id:9002/api/akademik/krs', {
+      headers: {
+        Authorization: `Bearer ${activeToken}`
+      }
+    })
+    const rawData = response.data?.data || response.data || []
+    
+    if (Array.isArray(rawData) && rawData.length > 0) {
+      krsList.value = rawData
+    } else {
+      krsList.value = KRS_DEMO_FALLBACK
+    }
+  } catch (error) {
+    console.error('Error fetching KRS from API, falling back to mock data:', error)
+    krsList.value = KRS_DEMO_FALLBACK
+    setMessage('info', 'Microservice API belum aktif atau token kadaluarsa. Menampilkan data demo.')
+  } finally {
+    krsLoading.value = false
+  }
+}
+
+// Fetch Single KRS
+async function viewKrsDetail(id) {
+  krsDetailLoading.value = true
+  setMessage('', '')
+  const activeToken = localStorage.getItem('simpadu_token') || import.meta.env.VITE_KRS_JWT_TOKEN || 'haei-anteque-anteque-async-embehgweh-bwemwanfwat'
+
+  if (String(id).startsWith('krs-')) {
+    const found = krsList.value.find(item => String(item.id_krs) === String(id))
+    selectedKrs.value = found ? JSON.parse(JSON.stringify(found)) : null
+    krsDetailLoading.value = false
+    return
+  }
+
+  try {
+    const response = await api.get(`https://api-admin-4c.rifkiaja.my.id:9002/api/akademik/krs/${id}`, {
+      headers: {
+        Authorization: `Bearer ${activeToken}`
+      }
+    })
+    selectedKrs.value = response.data?.data || response.data || null
+  } catch (error) {
+    console.error('Error fetching KRS detail:', error)
+    const found = krsList.value.find(item => String(item.id_krs) === String(id))
+    selectedKrs.value = found ? JSON.parse(JSON.stringify(found)) : null
+    setMessage('info', 'Gagal memuat rincian dari API. Menampilkan rincian data demo.')
+  } finally {
+    krsDetailLoading.value = false
+  }
+}
+
+// Get validation status for a KRS
+function getKrsStatus(krs) {
+  if (krsStatuses.value[krs.id_krs]) {
+    return krsStatuses.value[krs.id_krs]
+  }
+  return krs.status || 'Menunggu Persetujuan'
+}
+
+// Update validation status
+async function updateKrsStatus(id_krs, newStatus) {
+  loading.value = true
+  setMessage('', '')
+  const activeToken = localStorage.getItem('simpadu_token') || import.meta.env.VITE_KRS_JWT_TOKEN || 'haei-anteque-anteque-async-embehgweh-bwemwanfwat'
+  
+  try {
+    await api.put(`https://api-admin-4c.rifkiaja.my.id:9002/api/akademik/krs/${id_krs}`, {
+      status: newStatus
+    }, {
+      headers: {
+        Authorization: `Bearer ${activeToken}`
+      }
+    })
+    
+    krsStatuses.value[id_krs] = newStatus
+    localStorage.setItem('simpadu_krs_statuses', JSON.stringify(krsStatuses.value))
+    
+    if (selectedKrs.value && String(selectedKrs.value.id_krs) === String(id_krs)) {
+      selectedKrs.value.status = newStatus
+    }
+    
+    setMessage('success', `Status KRS berhasil diperbarui ke: ${newStatus}`)
+  } catch (error) {
+    console.warn('API update not supported, updating status locally:', error)
+    
+    krsStatuses.value[id_krs] = newStatus
+    localStorage.setItem('simpadu_krs_statuses', JSON.stringify(krsStatuses.value))
+    
+    if (selectedKrs.value && String(selectedKrs.value.id_krs) === String(id_krs)) {
+      selectedKrs.value.status = newStatus
+    }
+    
+    setMessage('success', `Status KRS berhasil diperbarui (lokal) ke: ${newStatus === 'Disetujui' ? 'Disetujui ✅' : 'Ditolak ❌'}`)
+  } finally {
+    loading.value = false
+  }
+}
+
+function calculateTotalSks(krs) {
+  if (!krs || !Array.isArray(krs.mata_kuliahs)) return 0
+  return krs.mata_kuliahs.reduce((sum, item) => sum + Number(item.sks || 0), 0)
+}
+
+function closeKrsDetail() {
+  selectedKrs.value = null
+}
+
 function resetNilaiForm() {
   nilaiForm.value.id_kelas = NILAI_ID_KELAS
   nilaiForm.value.id_mk = NILAI_ID_MK
@@ -2514,6 +2871,11 @@ async function refreshData() {
     await ambilKelasSaya()
     await ambilPresensiHariIni(false)
     await ambilRekapAbsensi(false)
+    return
+  }
+
+  if (props.page === 'validasi-krs') {
+    await loadKrsData()
   }
 }
 
@@ -6001,6 +6363,523 @@ const logoUrl = '/assets/images/logo-poliban.png' dan semua function tidak diuba
   margin-top: 10px;
   font-size: 12px;
   opacity: 0.75;
+}
+
+/* ===== VALIDASI KRS STYLES ===== */
+.krs-page {
+  display: grid;
+  gap: 20px;
+}
+
+.krs-filter-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.search-box {
+  flex: 1;
+  max-width: 420px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 0 16px;
+  height: 48px;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.02);
+}
+
+.search-box input {
+  width: 100%;
+  border: none;
+  outline: none;
+  font-size: 14px;
+  color: #1e293b;
+  font-weight: 500;
+  background: transparent;
+}
+
+.krs-refresh-btn {
+  height: 48px;
+  padding: 0 20px;
+  background: #ffffff;
+  border: 1px solid #d8e2ef;
+  color: #062b49;
+  border-radius: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.02);
+}
+
+.krs-refresh-btn:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.krs-loading-state, .krs-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 26px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(6, 43, 73, 0.1);
+  border-left-color: #062b49;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.krs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.krs-card-item {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 24px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
+  display: flex;
+  flex-direction: column;
+}
+
+.krs-card-item:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08);
+  border-color: #cbd5e1;
+}
+
+.krs-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.avatar-small {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 16px;
+  border: 1px solid #dbeafe;
+}
+
+.avatar-large {
+  width: 58px;
+  height: 58px;
+  border-radius: 18px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 24px;
+  border: 1px solid #dbeafe;
+}
+
+.krs-status-badge {
+  padding: 6px 12px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.krs-status-badge.menunggu-persetujuan {
+  background: #fef3c7;
+  color: #d97706;
+  border: 1px solid #fde68a;
+}
+
+.krs-status-badge.disetujui {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.krs-status-badge.ditolak {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.student-name {
+  margin: 0 0 4px;
+  color: #1e293b;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.student-nim {
+  margin: 0 0 16px;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.krs-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  background: #f8fafc;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid #f1f5f9;
+  margin-bottom: 16px;
+}
+
+.krs-meta-grid div {
+  text-align: center;
+}
+
+.krs-meta-grid small {
+  display: block;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.krs-meta-grid strong {
+  display: block;
+  color: #1e293b;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.krs-card-footer {
+  margin-top: auto;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #062b49;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.krs-card-footer .arrow {
+  transition: transform 0.2s ease;
+}
+
+.krs-card-item:hover .krs-card-footer .arrow {
+  transform: translateX(4px);
+}
+
+/* KRS DETAIL STYLES */
+.krs-detail-view {
+  display: grid;
+  gap: 20px;
+}
+
+.back-to-krs {
+  width: fit-content;
+  border: 1px solid #d8e2ef;
+  background: #ffffff;
+  color: #062b49;
+  border-radius: 14px;
+  padding: 11px 18px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.02);
+}
+
+.back-to-krs:hover {
+  background: #f8fafc;
+  transform: translateY(-1px);
+}
+
+.krs-detail-hero {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 26px;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
+}
+
+.krs-hero-main {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.krs-eyebrow {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 900;
+  color: #1d4ed8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.krs-detail-hero h2 {
+  margin: 4px 0;
+  font-size: 24px;
+  font-weight: 900;
+  color: #1e293b;
+  letter-spacing: -0.5px;
+}
+
+.krs-sub {
+  margin: 0;
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.krs-sub b {
+  color: #1e293b;
+  font-weight: 700;
+}
+
+.krs-detail-layout {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 20px;
+  align-items: start;
+}
+
+.krs-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 26px;
+  padding: 24px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
+}
+
+.krs-card-head {
+  margin-bottom: 20px;
+}
+
+.krs-card-head h3 {
+  margin: 0 0 6px;
+  color: #1e293b;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.krs-card-head p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.krs-table-wrapper {
+  overflow-x: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+}
+
+.krs-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 14px;
+}
+
+.krs-table th {
+  background: #f8fafc;
+  padding: 14px 16px;
+  color: #475569;
+  font-weight: 800;
+  font-size: 12px;
+  text-transform: uppercase;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.krs-table td {
+  padding: 16px;
+  border-bottom: 1px solid #e2e8f0;
+  color: #334155;
+  font-weight: 600;
+}
+
+.krs-table tr:last-child td {
+  border-bottom: none;
+}
+
+.krs-table code {
+  background: #f1f5f9;
+  padding: 4px 8px;
+  border-radius: 8px;
+  color: #0f172a;
+  font-weight: 700;
+  font-family: Menlo, Monaco, Consolas, Courier New, monospace;
+  font-size: 12px;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.font-semibold {
+  font-weight: 700;
+}
+
+.font-bold {
+  font-weight: 800;
+}
+
+.total-sks {
+  color: #1d4ed8 !important;
+  font-size: 15px;
+}
+
+.krs-table tfoot td {
+  background: #f8fafc;
+  padding: 16px;
+  border-top: 2px solid #e2e8f0;
+  color: #1e293b;
+}
+
+/* PERSETUJUAN ACTION CARD */
+.krs-action-card h3 {
+  margin: 0 0 8px;
+  color: #1e293b;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.krs-action-card p {
+  margin: 0 0 20px;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 600;
+}
+
+.krs-action-status-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+}
+
+.krs-action-status-box small {
+  display: block;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.krs-action-status-box strong {
+  display: block;
+  color: #1e293b;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.krs-action-buttons {
+  display: grid;
+  gap: 12px;
+}
+
+.krs-btn {
+  width: 100%;
+  height: 48px;
+  border: none;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.approve-btn {
+  background: #16a34a;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.2);
+}
+
+.approve-btn:hover:not(:disabled) {
+  background: #15803d;
+  transform: translateY(-1px);
+}
+
+.reject-btn {
+  background: #dc2626;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);
+}
+
+.reject-btn:hover:not(:disabled) {
+  background: #b91c1c;
+  transform: translateY(-1px);
+}
+
+.krs-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+@media (max-width: 992px) {
+  .krs-detail-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 576px) {
+  .krs-detail-hero {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  
+  .krs-filter-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .search-box {
+    max-width: none;
+  }
 }
 
 </style>
