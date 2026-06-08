@@ -1647,7 +1647,7 @@ function normalizePeserta(item, index = 0) {
     _key: String(nim || nama || index),
     nim,
     nama: nama || `Peserta ${nim || index + 1}`,
-    manual_status: item?.manual_status || item?.status_manual || item?.status || 'H',
+    manual_status: item?.manual_status || item?.status_manual || item?.status_presensi || item?.status || '',
   }
 }
 
@@ -2201,22 +2201,26 @@ async function uploadTugasKelas(kelas) {
 
 
 function statusManualPeserta(peserta) {
-  return String(peserta?.manual_status || peserta?.status_manual || peserta?.status || 'H').toUpperCase()
+  return String(peserta?.manual_status || peserta?.status_manual || peserta?.status_presensi || peserta?.status || '').toUpperCase()
 }
 
 function setStatusPresensiManual(kelas, peserta, status) {
   if (!kelas || !peserta) return
 
-  const pesertaList = (kelas.peserta || []).map((item) => {
-    if (String(item._key) === String(peserta._key)) {
+  const pesertaKey = peserta._key || String(peserta.nim || peserta.NIM || peserta.id || peserta.nama || '').trim()
+
+  const pesertaList = (kelas.peserta || []).map((item, idx) => {
+    const itemKey = item._key || String(item.nim || item.NIM || item.id || item.nama || idx).trim()
+
+    if (String(itemKey) === String(pesertaKey)) {
       return normalizePeserta({
         ...item,
         manual_status: status,
         status_manual: status,
-      })
+      }, idx)
     }
 
-    return normalizePeserta(item)
+    return normalizePeserta(item, idx)
   })
 
   updateKelasLokal({
@@ -2328,11 +2332,11 @@ async function ambilKelasSaya() {
                 dosen_nama: userName.value,
                 // Dummy student roster data as requested
                 peserta: [
-                  { id_kelas_master: 1, nim: `C03032100${index}1`, nama: 'Ahmad Dani', status_presensi: 'H' },
-                  { id_kelas_master: 2, nim: `C03032100${index}2`, nama: 'Siti Aminah', status_presensi: 'H' },
-                  { id_kelas_master: 3, nim: `C03032100${index}3`, nama: 'Budi Pratama', status_presensi: 'H' },
-                  { id_kelas_master: 4, nim: `C03032100${index}4`, nama: 'Rina Sari', status_presensi: 'H' },
-                  { id_kelas_master: 5, nim: `C03032100${index}5`, nama: 'Andi Saputra', status_presensi: 'H' }
+                  { id_kelas_master: 1, nim: `C03032100${index}1`, nama: 'Ahmad Dani', status_presensi: '' },
+                  { id_kelas_master: 2, nim: `C03032100${index}2`, nama: 'Siti Aminah', status_presensi: '' },
+                  { id_kelas_master: 3, nim: `C03032100${index}3`, nama: 'Budi Pratama', status_presensi: '' },
+                  { id_kelas_master: 4, nim: `C03032100${index}4`, nama: 'Rina Sari', status_presensi: '' },
+                  { id_kelas_master: 5, nim: `C03032100${index}5`, nama: 'Andi Saputra', status_presensi: '' }
                 ]
               }
             })
@@ -4063,10 +4067,10 @@ watch(
 .manual-status-pill {
   width: 66px;
   height: 54px;
-  border: 1px solid #dedede;
+  border: 1px solid #dedede !important;
   border-radius: 999px;
-  background: #f5f5f5;
-  color: #777777;
+  background: #f5f5f5 !important;
+  color: #777777 !important;
   font-size: 18px;
   font-weight: 900;
   cursor: pointer;
@@ -4079,25 +4083,10 @@ watch(
 }
 
 .manual-status-pill.active {
-  color: #ffffff;
-  border-color: transparent;
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
-}
-
-.manual-status-pill.hadir.active {
-  background: #45ad4f;
-}
-
-.manual-status-pill.sakit.active {
-  background: #299ee9;
-}
-
-.manual-status-pill.izin.active {
-  background: #f59e0b;
-}
-
-.manual-status-pill.alpha.active {
-  background: #ef4444;
+  background: #062b49 !important;
+  color: #ffffff !important;
+  border-color: #062b49 !important;
+  box-shadow: 0 8px 18px rgba(6, 43, 73, 0.22) !important;
 }
 
 .manual-empty-text {
