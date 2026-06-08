@@ -266,6 +266,72 @@
             </span>
           </div>
 
+          <!-- UPLOAD MATERI & TUGAS (PINDAH KE ATAS) -->
+          <section class="detail-card" style="margin-bottom: 22px;">
+            <div class="detail-card-head">
+              <div>
+                <h3>Upload Materi & Tugas</h3>
+                <p>Unggah file untuk kelas ini.</p>
+              </div>
+            </div>
+
+            <div class="kelas-upload-grid">
+              <div class="upload-card">
+                <div>
+                  <h4>Upload Materi</h4>
+                  <p>Unggah materi pembelajaran.</p>
+                </div>
+
+                <input type="file" @change="pilihFileMateri(selectedKelasDetail, $event)" />
+
+                <button
+                  type="button"
+                  class="upload-btn"
+                  :disabled="loading || !selectedKelasDetail.materi_file"
+                  @click="uploadMateriKelas(selectedKelasDetail)"
+                >
+                  {{ loading ? 'Mengupload...' : 'Upload Materi' }}
+                </button>
+
+                <div v-if="selectedKelasDetail.materi_list && selectedKelasDetail.materi_list.length" class="upload-list">
+                  <span
+                    v-for="materi in selectedKelasDetail.materi_list"
+                    :key="materi._key"
+                  >
+                    📄 {{ materi.nama }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="upload-card">
+                <div>
+                  <h4>Upload Tugas</h4>
+                  <p>Unggah tugas mahasiswa.</p>
+                </div>
+
+                <input type="file" @change="pilihFileTugas(selectedKelasDetail, $event)" />
+
+                <button
+                  type="button"
+                  class="upload-btn"
+                  :disabled="loading || !selectedKelasDetail.tugas_file"
+                  @click="uploadTugasKelas(selectedKelasDetail)"
+                >
+                  {{ loading ? 'Mengupload...' : 'Upload Tugas' }}
+                </button>
+
+                <div v-if="selectedKelasDetail.tugas_list && selectedKelasDetail.tugas_list.length" class="upload-list">
+                  <span
+                    v-for="tugas in selectedKelasDetail.tugas_list"
+                    :key="tugas._key"
+                  >
+                    📝 {{ tugas.nama }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </section>
+
           <div class="kelas-detail-summary">
             <div>
               <small>Semester</small>
@@ -288,7 +354,7 @@
             </div>
           </div>
 
-          <div class="kelas-detail-layout">
+          <div class="kelas-detail-layout" style="align-items: stretch;">
             <div class="detail-main-column">
               <section class="detail-card">
                 <div class="detail-card-head">
@@ -368,41 +434,55 @@
                   <strong>QR belum dibuat</strong>
                   <p>Klik tombol Mulai Kelas untuk membuat QR presensi.</p>
                 </div>
+              </section>
+            </div>
 
-                <div class="manual-mobile-card">
-                  <div class="manual-mobile-head">
-                    <h4>Presensi Manual Mahasiswa</h4>
+            <div class="detail-side-column" style="display: flex; flex-direction: column; height: 100%;">
+              <!-- PRESENSI MANUAL MAHASISWA (PINDAH KE KANAN) -->
+              <section class="detail-card" style="flex: 1; display: flex; flex-direction: column; margin: 0;">
+                <div class="detail-card-head">
+                  <div>
+                    <h3>Presensi Manual</h3>
+                    <p>Pilih status presensi mahasiswa (H, S, I, A) untuk pertemuan ke-{{ pertemuanKe }}.</p>
+                  </div>
+                </div>
+
+                <div class="manual-mobile-card" style="border: 0; padding: 0; box-shadow: none; margin: 0; display: flex; flex-direction: column; flex: 1; min-height: 0;">
+                  <div class="manual-mobile-head" style="padding: 0 0 12px 0; flex-shrink: 0;">
+                    <h4>Daftar Mahasiswa</h4>
                     <span>{{ jumlahPesertaKelas(selectedKelasDetail) }} Mahasiswa</span>
                   </div>
 
-                  <div
-                    v-for="peserta in selectedKelasDetail.peserta"
-                    :key="peserta._key"
-                    class="manual-student-row"
-                  >
-                    <div class="manual-student-info">
-                      <strong>{{ peserta.nama }}</strong>
-                      <small>{{ peserta.nim || peserta.id || '-' }}</small>
+                  <div class="manual-scroll-list" style="flex: 1; overflow-y: auto; padding-right: 6px; margin-bottom: 12px;">
+                    <div
+                      v-for="peserta in selectedKelasDetail.peserta"
+                      :key="peserta._key"
+                      class="manual-student-row"
+                    >
+                      <div class="manual-student-info">
+                        <strong>{{ peserta.nama }}</strong>
+                        <small>{{ peserta.nim || peserta.id || '-' }}</small>
+                      </div>
+
+                      <div class="manual-status-row">
+                        <button
+                          v-for="opsi in manualStatusOptions"
+                          :key="opsi.value"
+                          type="button"
+                          :class="['manual-status-pill', opsi.className, { active: statusManualPeserta(peserta) === opsi.value }]"
+                          @click="setStatusPresensiManual(selectedKelasDetail, peserta, opsi.value)"
+                        >
+                          {{ opsi.label }}
+                        </button>
+                      </div>
                     </div>
 
-                    <div class="manual-status-row">
-                      <button
-                        v-for="opsi in manualStatusOptions"
-                        :key="opsi.value"
-                        type="button"
-                        :class="['manual-status-pill', opsi.className, { active: statusManualPeserta(peserta) === opsi.value }]"
-                        @click="setStatusPresensiManual(selectedKelasDetail, peserta, opsi.value)"
-                      >
-                        {{ opsi.label }}
-                      </button>
-                    </div>
+                    <p v-if="!selectedKelasDetail.peserta || selectedKelasDetail.peserta.length === 0" class="manual-empty-text">
+                      Belum ada mahasiswa di kelas ini.
+                    </p>
                   </div>
 
-                  <p v-if="!selectedKelasDetail.peserta || selectedKelasDetail.peserta.length === 0" class="manual-empty-text">
-                    Belum ada mahasiswa di kelas ini.
-                  </p>
-
-                  <div class="manual-mobile-footer">
+                  <div class="manual-mobile-footer" style="padding-left: 0; padding-right: 0; padding-bottom: 0; flex-shrink: 0;">
                     <button
                       class="manual-save-mobile-btn"
                       type="button"
@@ -413,99 +493,6 @@
                     </button>
                   </div>
                 </div>
-              </section>
-            </div>
-
-            <div class="detail-side-column">
-              <section class="detail-card">
-                <div class="detail-card-head">
-                  <div>
-                    <h3>Upload Materi & Tugas</h3>
-                    <p>Unggah file untuk kelas ini.</p>
-                  </div>
-                </div>
-
-                <div class="kelas-upload-grid detail-upload-grid">
-                  <div class="upload-card">
-                    <div>
-                      <h4>Upload Materi</h4>
-                      <p>Unggah materi pembelajaran.</p>
-                    </div>
-
-                    <input type="file" @change="pilihFileMateri(selectedKelasDetail, $event)" />
-
-                    <button
-                      type="button"
-                      class="upload-btn"
-                      :disabled="loading || !selectedKelasDetail.materi_file"
-                      @click="uploadMateriKelas(selectedKelasDetail)"
-                    >
-                      {{ loading ? 'Mengupload...' : 'Upload Materi' }}
-                    </button>
-
-                    <div v-if="selectedKelasDetail.materi_list && selectedKelasDetail.materi_list.length" class="upload-list">
-                      <span
-                        v-for="materi in selectedKelasDetail.materi_list"
-                        :key="materi._key"
-                      >
-                        📄 {{ materi.nama }}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div class="upload-card">
-                    <div>
-                      <h4>Upload Tugas</h4>
-                      <p>Unggah tugas mahasiswa.</p>
-                    </div>
-
-                    <input type="file" @change="pilihFileTugas(selectedKelasDetail, $event)" />
-
-                    <button
-                      type="button"
-                      class="upload-btn"
-                      :disabled="loading || !selectedKelasDetail.tugas_file"
-                      @click="uploadTugasKelas(selectedKelasDetail)"
-                    >
-                      {{ loading ? 'Mengupload...' : 'Upload Tugas' }}
-                    </button>
-
-                    <div v-if="selectedKelasDetail.tugas_list && selectedKelasDetail.tugas_list.length" class="upload-list">
-                      <span
-                        v-for="tugas in selectedKelasDetail.tugas_list"
-                        :key="tugas._key"
-                      >
-                        📝 {{ tugas.nama }}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              <section class="detail-card">
-                <div class="detail-card-head">
-                  <div>
-                    <h3>Peserta Kelas</h3>
-                    <p>{{ jumlahPesertaKelas(selectedKelasDetail) }} peserta terdaftar.</p>
-                  </div>
-                </div>
-
-                <div v-if="selectedKelasDetail.peserta && selectedKelasDetail.peserta.length" class="peserta-list peserta-list-detail">
-                  <div
-                    v-for="peserta in selectedKelasDetail.peserta"
-                    :key="peserta._key"
-                    class="peserta-item"
-                  >
-                    <div>
-                      <strong>{{ peserta.nama }}</strong>
-                      <small>{{ peserta.nim || peserta.id || '-' }}</small>
-                    </div>
-                  </div>
-                </div>
-
-                <p v-else class="empty-peserta">
-                  Belum ada peserta kelas.
-                </p>
               </section>
             </div>
           </div>
@@ -4039,17 +4026,17 @@ watch(
   min-height: 76px;
   border: none;
   border-radius: 14px;
-  background: #43a047;
+  background: #062b49;
   color: #ffffff;
   font-size: 23px;
   font-weight: 900;
   cursor: pointer;
-  box-shadow: 0 4px 8px rgba(46, 125, 50, 0.28);
+  box-shadow: 0 4px 8px rgba(6, 43, 73, 0.2);
   transition: 0.18s ease;
 }
 
 .manual-save-mobile-btn:hover {
-  background: #388e3c;
+  background: #0b4b84;
   transform: translateY(-1px);
 }
 
@@ -5563,18 +5550,25 @@ const logoUrl = '/assets/images/logo-poliban.png' dan semua function tidak diuba
 .primary-btn,
 .start-btn,
 .manual-presensi-btn,
-.save-nilai-btn {
+.save-nilai-btn,
+.upload-btn,
+.manual-save-mobile-btn,
+.qr-demo-btn {
   background: #062b49 !important;
   color: #ffffff !important;
+  box-shadow: 0 12px 24px rgba(6, 43, 73, 0.16) !important;
 }
 
 .refresh-btn:hover,
 .primary-btn:hover,
 .start-btn:hover,
 .manual-presensi-btn:hover,
-.save-nilai-btn:hover {
+.save-nilai-btn:hover,
+.upload-btn:hover,
+.manual-save-mobile-btn:hover,
+.qr-demo-btn:hover {
   background: #0a3b63 !important;
-  transform: translateY(-1px);
+  transform: translateY(-1px) !important;
 }
 
 .end-btn {
