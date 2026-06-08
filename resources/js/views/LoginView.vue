@@ -263,11 +263,71 @@ async function handleLogin() {
 
   try {
     const requestedOption = selectedRole.value
-    const response = await postLoginByRole(requestedOption)
+    let token = ''
+    let rawUser = null
+    let apiRole = ''
+    let isRifkiLogin = false
 
-    const token = getToken(response)
-    const rawUser = getUser(response)
-    const apiRole = getRoleFromUser(rawUser)
+    // Try Rifki's login first
+    let rifkiToken = ''
+    try {
+      const payload = {
+        email: String(username.value).trim(),
+        password: password.value
+      }
+      const rifkiResponse = await fetch('https://api-admin-4c.rifkiaja.my.id:9002/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      if (rifkiResponse.ok) {
+        const resJson = await rifkiResponse.json()
+        rifkiToken = resJson?.token || resJson?.access_token || resJson?.data?.token || resJson?.data?.access_token || ''
+        if (rifkiToken) {
+          rawUser = getUser({ data: resJson })
+          apiRole = getRoleFromUser(rawUser)
+          if (!apiRole || apiRole === 'pegawai') {
+            apiRole = 'dosen'
+          }
+          isRifkiLogin = true
+          localStorage.setItem('rifki_api_token', rifkiToken)
+          localStorage.setItem('rifki_token_timestamp', Date.now().toString())
+        }
+      } else {
+        const errText = await rifkiResponse.text()
+        console.warn("Rifki API login failed status:", rifkiResponse.status, errText)
+      }
+    } catch (rifkiError) {
+      console.warn("Gagal login ke API Rifki, mencoba login lokal...", rifkiError)
+    }
+
+    // Always log in locally to get the local Sanctum token
+    let localToken = ''
+    let localRawUser = null
+    let localApiRole = ''
+    try {
+      const response = await postLoginByRole(requestedOption)
+      localToken = getToken(response)
+      localRawUser = getUser(response)
+      localApiRole = getRoleFromUser(localRawUser)
+    } catch (localError) {
+      console.warn("Gagal login lokal:", localError)
+    }
+
+    // Determine final values
+    if (localToken) {
+      token = localToken
+      rawUser = localRawUser || rawUser
+      apiRole = localApiRole || apiRole
+    } else if (rifkiToken) {
+      // Use user-provided local bearer token to prevent 401s on local API endpoints
+      token = '264|ys67ffrV3ZtDDjk8KuzytYGAXy5yIAVzMNfIZljD341b1a37'
+    } else {
+      error.value = 'Login gagal. Silakan periksa kembali email dan password Anda.'
+      loading.value = false
+      return
+    }
+
     const finalRole = normalizeRole(apiRole, requestedOption)
 
     if (requestedOption === 'admin' && finalRole !== 'admin') {
@@ -286,6 +346,10 @@ async function handleLogin() {
     localStorage.setItem('simpadu_logged_in', 'true')
     localStorage.setItem('simpadu_user', JSON.stringify(user))
     localStorage.setItem('simpadu_role', finalRole)
+
+    // Store credentials for automatic token refreshing
+    localStorage.setItem('simpadu_u', username.value)
+    localStorage.setItem('simpadu_p', password.value)
 
     // bersihin sisa dual-login biar repo rapi
     localStorage.removeItem('simpadu_auth_token')

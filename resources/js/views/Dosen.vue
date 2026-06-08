@@ -453,7 +453,7 @@
                     <span>{{ jumlahPesertaKelas(selectedKelasDetail) }} Mahasiswa</span>
                   </div>
 
-                  <div class="manual-scroll-list" style="flex: 1; overflow-y: auto; padding-right: 6px; margin-bottom: 12px;">
+                  <div class="manual-scroll-list" style="max-height: 320px; overflow-y: auto; padding-right: 6px; margin-bottom: 12px;">
                     <div
                       v-for="peserta in selectedKelasDetail.peserta"
                       :key="peserta._key"
@@ -1538,6 +1538,41 @@ function ambilArray(response) {
   return []
 }
 
+async function getRifkiToken() {
+  const token = localStorage.getItem('rifki_api_token')
+  const timestamp = Number(localStorage.getItem('rifki_token_timestamp') || '0')
+  const now = Date.now()
+  
+  // 1500000ms is 25 minutes (token expires in 1800s/30 mins)
+  if (token && (now - timestamp < 1500000)) {
+    return token
+  }
+  
+  const savedU = localStorage.getItem('simpadu_u')
+  const savedP = localStorage.getItem('simpadu_p')
+  if (savedU && savedP) {
+    try {
+      const response = await fetch('https://api-admin-4c.rifkiaja.my.id:9002/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ email: savedU, password: savedP })
+      })
+      if (response.ok) {
+        const data = await response.json()
+        const newToken = data?.token || data?.access_token || data?.data?.token || data?.data?.access_token || ''
+        if (newToken) {
+          localStorage.setItem('rifki_api_token', newToken)
+          localStorage.setItem('rifki_token_timestamp', String(Date.now()))
+          return newToken
+        }
+      }
+    } catch (e) {
+      console.error("Gagal refresh token Rifki:", e)
+    }
+  }
+  return token || ''
+}
+
 function getNestedValue(obj, paths) {
   for (const path of paths) {
     const value = path.split('.').reduce((result, key) => {
@@ -2257,7 +2292,63 @@ async function ambilKelasSaya() {
     let response = null
     let lastError = null
 
-    // Prioritas utama: data resmi dari Postman/API SIMPADU.
+    // 1. Prioritas Utama: Rifki's akademik/kelas
+    try {
+      const tokenRifki = await getRifkiToken()
+      if (tokenRifki) {
+        const fetchResponse = await fetch('https://api-admin-4c.rifkiaja.my.id:9002/api/akademik/kelas', {
+          headers: {
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${tokenRifki}`
+          }
+        })
+        if (fetchResponse.ok) {
+          const resJson = await fetchResponse.json()
+          const rifkiClasses = resJson?.data || []
+          if (Array.isArray(rifkiClasses) && rifkiClasses.length > 0) {
+            // Map the rifkiClasses format to our normalized class structure with dummy details and students
+            const normalized = rifkiClasses.map((item, index) => {
+              const idKelas = item.id_kelas || `KELAS-${index + 1}`
+              const kelasNama = item.kelas_nama || item.alias || `TI_2${String.fromCharCode(65 + index)}`
+              return {
+                id_kelas_mk: idKelas,
+                id_kelas: idKelas,
+                kelas_mk_id: idKelas,
+                id: String(idKelas),
+                nama: `Mata Kuliah ${index + 1} - ${kelasNama}`,
+                nama_kelas: kelasNama,
+                mata_kuliah: `Mata Kuliah ${index + 1}`,
+                semester: item.semester || 1,
+                sks: 3,
+                ruang: 'Lab Komputer 1',
+                hari: index % 2 === 0 ? 'Senin' : 'Rabu',
+                jam: '08:00 - 10:30',
+                jadwal: index % 2 === 0 ? 'Senin, 08:00 - 10:30' : 'Rabu, 13:30 - 15:00',
+                status: 'tersedia',
+                dosen_nama: userName.value,
+                // Dummy student roster data as requested
+                peserta: [
+                  { id_kelas_master: 1, nim: `C03032100${index}1`, nama: 'Ahmad Dani', status_presensi: 'H' },
+                  { id_kelas_master: 2, nim: `C03032100${index}2`, nama: 'Siti Aminah', status_presensi: 'H' },
+                  { id_kelas_master: 3, nim: `C03032100${index}3`, nama: 'Budi Pratama', status_presensi: 'H' },
+                  { id_kelas_master: 4, nim: `C03032100${index}4`, nama: 'Rina Sari', status_presensi: 'H' },
+                  { id_kelas_master: 5, nim: `C03032100${index}5`, nama: 'Andi Saputra', status_presensi: 'H' }
+                ]
+              }
+            })
+            kelasSaya.value = normalized
+            simpanSemuaKelasAdmin(normalized)
+            return
+          }
+        } else {
+          console.warn(`Rifki's kelas endpoint returned error status: ${fetchResponse.status}`)
+        }
+      }
+    } catch (rifkiError) {
+      console.warn("Gagal mengambil kelas dari API Rifki:", rifkiError)
+    }
+
+    // 2. Backup/Prioritas Kedua: data resmi dari Postman/API SIMPADU.
     const apiEndpointCandidates = [
       ENDPOINTS?.dashboard?.jadwalMengajar,
       ENDPOINTS?.kelas?.list,
@@ -2272,7 +2363,7 @@ async function ambilKelasSaya() {
       }
     }
 
-    // Fallback lama tetap dipertahankan supaya fitur yang sudah jalan tidak rusak.
+    // 3. Fallback lama tetap dipertahankan supaya fitur yang sudah jalan tidak rusak.
     if (!response) {
       for (const endpoint of PESERTA_KELAS_MK_ENDPOINTS) {
         try {
@@ -7040,6 +7131,24 @@ const logoUrl = '/assets/images/logo-poliban.png' dan semua function tidak diuba
 }
 
 .history-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* Custom premium scrollbar for manual student list */
+.manual-scroll-list::-webkit-scrollbar {
+  width: 5px;
+}
+
+.manual-scroll-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.manual-scroll-list::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+}
+
+.manual-scroll-list::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.2);
 }
 </style>

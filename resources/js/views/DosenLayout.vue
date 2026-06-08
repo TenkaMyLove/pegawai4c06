@@ -883,7 +883,8 @@ function getTokenFromResponse(data) {
 function formatQrCode(qr) {
   if (!qr) return ''
 
-  const API_BASE_URL = 'https://api-pegawai-4c.akufarish.my.id:9001/api'
+  const API_BASE_URL = 'https://api-admin-4c.rifkiaja.my.id:9002/api'
+  // const API_BASE_URL = 'https://api-pegawai-4c.akufarish.my.id:9001/api'
 
   let cleanQr = String(qr).trim()
   cleanQr = decodeHtmlEntities(cleanQr)
