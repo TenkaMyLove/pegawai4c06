@@ -338,6 +338,12 @@
                   <div>
                     <h3>Presensi Kelas</h3>
                     <p>Gunakan QR untuk presensi, atau input manual jika mahasiswa tidak bisa scan.</p>
+                    <div class="meeting-selector-row" style="margin: 12px 0 0; display: flex; align-items: center; gap: 8px;">
+                      <label style="font-weight: 700; font-size: 13px; color: #475569;">Pertemuan Ke:</label>
+                      <select v-model="pertemuanKe" @change="fetchRoster(selectedKelasDetail)" style="padding: 6px 10px; border-radius: 10px; border: 1.4px solid #cbd5e1; background: #fff; font-weight: 800; color: #1e293b; font-size: 13px; cursor: pointer;">
+                        <option v-for="n in 16" :key="n" :value="n">Pertemuan {{ n }}</option>
+                      </select>
+                    </div>
                   </div>
 
                   <button
@@ -517,7 +523,7 @@
         <div class="content-header">
           <div>
             <h2>Input Nilai Mahasiswa</h2>
-            <p>Input nilai untuk id_kelas 1 dan id_mk 1 sesuai struktur tabel grades.</p>
+
           </div>
 
           <button class="refresh-btn" type="button" @click="refreshData">
@@ -670,15 +676,8 @@
 
       <!-- PRESENSI DOSEN -->
       <section v-if="page === 'presensi'" class="dashboard-card presensi-page">
-        <div class="page-head">
-          <div>
-            <h2>Presensi Saya</h2>
-            <p>Halaman ini digunakan untuk presensi dosen sendiri.</p>
-          </div>
-        </div>
-
         <div class="presensi-layout">
-          <div class="presensi-panel modern-presensi-card">
+          <div class="white-card presensi-panel modern-presensi-card">
                         <h2>Presensi Harian</h2>
 
             <div class="daily-presensi-info">
@@ -1036,6 +1035,7 @@ const keteranganPresensi = ref('')
 const modePresensi = ref('masuk')
 const presensiHariIni = ref(null)
 const selectedKelasId = ref('')
+const pertemuanKe = ref(1)
 
 const NILAI_ID_KELAS = '1'
 const NILAI_ID_MK = '1'
@@ -1465,6 +1465,27 @@ const PESERTA_KELAS_MK_ENDPOINTS = [
   '/kelas-api/pesertakelasmk',
   '/kelas-api/api/peserta-kelas-mk',
   '/kelas-api/api/peserta_kelas_mk',
+]
+
+const PRESENSI_MAHASISWA_ROSTER_ENDPOINTS = [
+  'https://api-admin-4c.rifkiaja.my.id:9002/api/presensi-mahasiswa/roster',
+  '/api/absensi/roster',
+]
+
+const BATCH_ROLL_CALL_ENDPOINTS = [
+  'https://api-admin-4c.rifkiaja.my.id:9002/api/presensi-mahasiswa/batch-roll-call',
+  '/api/absensi/manual',
+]
+
+const GENERATE_SESSION_ENDPOINTS = [
+  'https://api-admin-4c.rifkiaja.my.id:9002/api/presensi-sesi/generate',
+  '/api/qr/generate',
+  '/api/kelas/start',
+]
+
+const CLOSE_SESSION_ENDPOINTS = [
+  'https://api-admin-4c.rifkiaja.my.id:9002/api/presensi-sesi',
+  '/api/kelas/end',
 ]
 
 const NILAI_ENDPOINT = ENDPOINTS?.nilai?.index || '/api/nilai'
@@ -2003,8 +2024,45 @@ function isKelasTerbuka(kelas) {
   return String(selectedKelasId.value) === String(kelas?.id || kelas?._key || '')
 }
 
+async function fetchRoster(kelas) {
+  if (!kelas) return
+  const idKelasMk = getApiIdKelas(kelas)
+  if (!idKelasMk) return
+
+  loading.value = true
+  let success = false
+  for (const endpoint of PRESENSI_MAHASISWA_ROSTER_ENDPOINTS) {
+    try {
+      const response = await api.get(endpoint, {
+        params: {
+          id_kelas_mk: idKelasMk,
+          pertemuan_ke: pertemuanKe.value
+        }
+      })
+      const rosterData = response?.data?.data || response?.data || []
+      if (Array.isArray(rosterData) && rosterData.length > 0) {
+        kelas.peserta = rosterData.map((m, idx) => ({
+          _key: String(m.nim || m.id_kelas_master || idx),
+          id_kelas_master: m.id_kelas_master,
+          nim: m.nim,
+          nama: m.nama_mahasiswa || `Mahasiswa ${m.nim}`,
+          manual_status: m.status_presensi || 'H',
+          metode: m.metode
+        }))
+        success = true
+        break
+      }
+    } catch (e) {
+      console.warn(`Roster fetch failed on ${endpoint}:`, e)
+    }
+  }
+  loading.value = false
+}
+
 function bukaDetailKelas(kelas) {
   selectedKelasId.value = String(kelas?.id || kelas?._key || '')
+  pertemuanKe.value = 1
+  fetchRoster(kelas)
 }
 
 function toggleDetailKelas(kelas) {
@@ -2353,20 +2411,54 @@ async function startKelas(kelas) {
   loading.value = true
   setMessage('', '')
 
+  const idKelasMk = Number(getApiIdKelas(kelas))
+  const payloadRifki = {
+    ID_KELAS_MK: idKelasMk,
+    PERTEMUAN_KE: Number(pertemuanKe.value),
+    duration_minutes: 15,
+  }
+
   try {
-    const endpoint = ENDPOINTS?.kelas?.start || '/api/kelas/start'
+    let qrCode = ''
+    let sessionToken = ''
+    let sessionId = null
+    let success = false
 
-    await api.post(endpoint, {
-      kelas_id: getApiIdKelas(kelas),
-    })
+    // Try Rifki's generateSession first
+    try {
+      const response = await api.post('https://api-admin-4c.rifkiaja.my.id:9002/api/presensi-sesi/generate', payloadRifki)
+      const sesi = response?.data?.data || response?.data || {}
+      sessionId = sesi.id || sesi.ID_SESI || sesi.ID_PRESENSI_SESI || null
+      sessionToken = sesi.session_token || ''
+      if (sessionToken) {
+        qrCode = makeQrImageFromToken(sessionToken)
+        success = true
+      }
+    } catch (e) {
+      console.warn("Gagal membuat sesi QR di API Rifki, mencoba local start...", e)
+    }
 
-    const qrCode = buatQrDemo(kelas)
+    // Fallback to local / standard start
+    if (!success) {
+      try {
+        const endpoint = ENDPOINTS?.kelas?.start || '/api/kelas/start'
+        await api.post(endpoint, {
+          kelas_id: idKelasMk,
+        })
+        qrCode = buatQrDemo(kelas)
+        success = true
+      } catch (localError) {
+        console.warn("Gagal memulai kelas di API lokal, menggunakan mode demo offline.", localError)
+        qrCode = buatQrDemo(kelas)
+      }
+    }
 
     updateKelasLokal({
       ...kelas,
       status: 'berjalan',
       qrCode,
-      qrToken: `QR-${kelas.id}-${Date.now()}`,
+      qrToken: sessionToken || `QR-${kelas.id}-${Date.now()}`,
+      qrSessionId: sessionId,
     })
 
     qrModal.value = {
@@ -2378,23 +2470,7 @@ async function startKelas(kelas) {
 
     setMessage('success', 'Kelas berhasil dimulai dan QR berhasil dibuat.')
   } catch (e) {
-    const qrCode = buatQrDemo(kelas)
-
-    updateKelasLokal({
-      ...kelas,
-      status: 'berjalan',
-      qrCode,
-      qrToken: `DEMO-${kelas.id}-${Date.now()}`,
-    })
-
-    qrModal.value = {
-      show: true,
-      nama: kelas.nama || 'Kelas',
-      kelasId: kelas.id || '-',
-      qrCode,
-    }
-
-    setMessage('info', 'Kelas dimulai menggunakan mode sementara.')
+    setMessage('error', apiMessage(e, 'Gagal memulai kelas.'))
   } finally {
     loading.value = false
   }
@@ -2410,31 +2486,37 @@ async function endKelas(kelas) {
   setMessage('', '')
 
   try {
-    const endpoint = ENDPOINTS?.kelas?.end || '/api/kelas/end'
+    const sessionId = kelas.qrSessionId
 
-    await api.post(endpoint, {
-      kelas_id: getApiIdKelas(kelas),
-    })
+    if (sessionId) {
+      try {
+        await api.post(`https://api-admin-4c.rifkiaja.my.id:9002/api/presensi-sesi/${sessionId}/close`)
+      } catch (e) {
+        console.warn("Gagal menutup sesi QR di API Rifki:", e)
+      }
+    }
+
+    try {
+      const endpoint = ENDPOINTS?.kelas?.end || '/api/kelas/end'
+      await api.post(endpoint, {
+        kelas_id: getApiIdKelas(kelas),
+      })
+    } catch (e) {
+      console.warn("Gagal mengakhiri kelas di API lokal:", e)
+    }
 
     updateKelasLokal({
       ...kelas,
       status: 'selesai',
       qrCode: '',
       qrToken: '',
+      qrSessionId: null,
     })
 
     tutupQrModal()
     setMessage('success', 'Kelas berhasil diakhiri.')
   } catch (e) {
-    updateKelasLokal({
-      ...kelas,
-      status: 'selesai',
-      qrCode: '',
-      qrToken: '',
-    })
-
-    tutupQrModal()
-    setMessage('info', 'Kelas diakhiri menggunakan mode sementara.')
+    setMessage('error', apiMessage(e, 'Gagal mengakhiri kelas.'))
   } finally {
     loading.value = false
   }
@@ -2456,43 +2538,52 @@ async function simpanPresensiManualMahasiswa(kelas) {
   loading.value = true
   setMessage('', '')
 
-  const dataPresensi = pesertaList.map((peserta) => ({
-    nim: String(peserta.nim || peserta.NIM || peserta.id || '').trim(),
-    status: statusManualPeserta(peserta),
-    kode_pertemuan: getApiKodePertemuan(kelas),
-  })).filter((item) => item.nim)
+  const payloadRifki = {
+    presensi: pesertaList.map((peserta) => ({
+      id_kelas_master: peserta.id_kelas_master || 1,
+      id_kelas_mk: Number(getApiIdKelas(kelas)),
+      nim: String(peserta.nim || '').trim(),
+      pertemuan_ke: Number(pertemuanKe.value),
+      status_presensi: statusManualPeserta(peserta) || 'H',
+    })).filter((item) => item.nim),
+  }
 
-  if (dataPresensi.length === 0) {
-    loading.value = false
-    setMessage('error', 'NIM mahasiswa belum tersedia.')
-    return
+  const payloadLocal = {
+    id_kelas: getApiIdKelas(kelas),
+    id_mk: getApiIdMk(kelas),
+    data: pesertaList.map((peserta) => ({
+      nim: String(peserta.nim || '').trim(),
+      status: statusManualPeserta(peserta) || 'H',
+      kode_pertemuan: Number(pertemuanKe.value),
+    })).filter((item) => item.nim),
   }
 
   try {
-    const endpoint = ENDPOINTS?.absensi?.manual || '/api/absensi/manual'
+    let success = false
+    let messageText = ''
 
-    const payload = {
-      id_kelas: getApiIdKelas(kelas),
-      id_mk: getApiIdMk(kelas),
-      data: dataPresensi,
+    try {
+      const response = await api.post('https://api-admin-4c.rifkiaja.my.id:9002/api/presensi-mahasiswa/batch-roll-call', payloadRifki)
+      success = true
+      messageText = response?.data?.message || 'Batch presensi berhasil disimpan ke API Rifki.'
+    } catch (e) {
+      console.warn("Gagal menyimpan ke API Rifki, mencoba fallback local...", e)
+      
+      const endpoint = ENDPOINTS?.absensi?.manual || '/api/absensi/manual'
+      const response = await api.post(endpoint, payloadLocal)
+      success = true
+      messageText = response?.data?.message || 'Presensi manual disimpan menggunakan mode fallback.'
     }
 
-    const response = await api.post(endpoint, payload)
-
-    updateKelasLokal({
-      ...kelas,
-      peserta: pesertaList.map((peserta) => normalizePeserta(peserta)),
-    })
-
-    setMessage(
-      'success',
-      response?.data?.message || 'Presensi manual semua mahasiswa berhasil disimpan.'
-    )
+    if (success) {
+      updateKelasLokal({
+        ...kelas,
+        peserta: pesertaList.map((peserta) => normalizePeserta(peserta)),
+      })
+      setMessage('success', messageText)
+    }
   } catch (e) {
-    setMessage(
-      'error',
-      apiMessage(e, 'Gagal menyimpan presensi manual mahasiswa.')
-    )
+    setMessage('error', apiMessage(e, 'Gagal menyimpan presensi manual mahasiswa.'))
   } finally {
     loading.value = false
   }
@@ -6918,5 +7009,43 @@ const logoUrl = '/assets/images/logo-poliban.png' dan semua function tidak diuba
   background: rgba(0, 0, 0, 0.2);
 }
 
-</style>
+/* Align presensi layout and add vertical scrolling to history card */
+.presensi-layout {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  align-items: stretch !important;
+  gap: 24px !important;
+}
 
+.presensi-layout > div.white-card {
+  height: 520px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.history-list {
+  flex: 1 !important;
+  overflow-y: auto !important;
+  padding-right: 6px;
+}
+
+/* Custom premium scrollbar for history list */
+.history-list::-webkit-scrollbar {
+  width: 5px;
+}
+
+.history-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.history-list::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+}
+
+.history-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+</style>
