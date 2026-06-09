@@ -2903,7 +2903,7 @@ const KRS_DEMO_FALLBACK = [
 async function loadKrsData() {
   krsLoading.value = true
   setMessage('', '')
-  const activeToken = localStorage.getItem('simpadu_token') || import.meta.env.VITE_KRS_JWT_TOKEN || 'haei-anteque-anteque-async-embehgweh-bwemwanfwat'
+  const activeToken = localStorage.getItem('rifki_api_token') || localStorage.getItem('simpadu_token') || import.meta.env.VITE_KRS_JWT_TOKEN || 'haei-anteque-anteque-async-embehgweh-bwemwanfwat'
   
   try {
     const response = await api.get('https://api-admin-4c.rifkiaja.my.id:9002/api/akademik/krs', {
@@ -2931,7 +2931,7 @@ async function loadKrsData() {
 async function viewKrsDetail(id) {
   krsDetailLoading.value = true
   setMessage('', '')
-  const activeToken = localStorage.getItem('simpadu_token') || import.meta.env.VITE_KRS_JWT_TOKEN || 'haei-anteque-anteque-async-embehgweh-bwemwanfwat'
+  const activeToken = localStorage.getItem('rifki_api_token') || localStorage.getItem('simpadu_token') || import.meta.env.VITE_KRS_JWT_TOKEN || 'haei-anteque-anteque-async-embehgweh-bwemwanfwat'
 
   if (String(id).startsWith('krs-')) {
     const found = krsList.value.find(item => String(item.id_krs) === String(id))
@@ -2969,7 +2969,7 @@ function getKrsStatus(krs) {
 async function updateKrsStatus(id_krs, newStatus) {
   loading.value = true
   setMessage('', '')
-  const activeToken = localStorage.getItem('simpadu_token') || import.meta.env.VITE_KRS_JWT_TOKEN || 'haei-anteque-anteque-async-embehgweh-bwemwanfwat'
+  const activeToken = localStorage.getItem('rifki_api_token') || localStorage.getItem('simpadu_token') || import.meta.env.VITE_KRS_JWT_TOKEN || 'haei-anteque-anteque-async-embehgweh-bwemwanfwat'
   
   try {
     await api.put(`https://api-admin-4c.rifkiaja.my.id:9002/api/akademik/krs/${id_krs}`, {

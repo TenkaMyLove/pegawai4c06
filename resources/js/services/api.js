@@ -13,7 +13,21 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('simpadu_token')
 
-  if (token) {
+  // CORS fix: If the request is external, disable withCredentials to allow wildcard (*) origins
+  const isExternal = config.url && (config.url.startsWith('http://') || config.url.startsWith('https://'))
+  const isLocalDomain = config.url && config.url.includes('api-pegawai-4c.akufarish.my.id')
+
+  if (isExternal && !isLocalDomain) {
+    config.withCredentials = false
+    
+    // Automatically attach Rifki's Bearer token for Rifki's endpoints
+    if (config.url.includes('rifkiaja.my.id')) {
+      const rifkiToken = localStorage.getItem('rifki_api_token')
+      if (rifkiToken) {
+        config.headers.Authorization = `Bearer ${rifkiToken}`
+      }
+    }
+  } else if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
 
