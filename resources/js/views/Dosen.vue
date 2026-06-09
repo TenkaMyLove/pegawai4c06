@@ -1459,22 +1459,27 @@ const PESERTA_KELAS_MK_ENDPOINTS = [
 ]
 
 const PRESENSI_MAHASISWA_ROSTER_ENDPOINTS = [
+  'https://api-admin-4c.rifkiaja.my.id:9002/api/akademik/presensi-mahasiswa',
   'https://api-admin-4c.rifkiaja.my.id:9002/api/presensi-mahasiswa/roster',
   '/api/absensi/roster',
 ]
 
 const BATCH_ROLL_CALL_ENDPOINTS = [
+  'https://api-admin-4c.rifkiaja.my.id:9002/api/akademik/presensi-mahasiswa/batch-roll-call',
+  'https://api-admin-4c.rifkiaja.my.id:9002/api/akademik/presensi-mahasiswa/batch-store',
   'https://api-admin-4c.rifkiaja.my.id:9002/api/presensi-mahasiswa/batch-roll-call',
   '/api/absensi/manual',
 ]
 
 const GENERATE_SESSION_ENDPOINTS = [
+  'https://api-admin-4c.rifkiaja.my.id:9002/api/akademik/presensi-sesi/generate',
   'https://api-admin-4c.rifkiaja.my.id:9002/api/presensi-sesi/generate',
   '/api/qr/generate',
   '/api/kelas/start',
 ]
 
 const CLOSE_SESSION_ENDPOINTS = [
+  'https://api-admin-4c.rifkiaja.my.id:9002/api/akademik/presensi-sesi',
   'https://api-admin-4c.rifkiaja.my.id:9002/api/presensi-sesi',
   '/api/kelas/end',
 ]
@@ -2066,20 +2071,20 @@ async function fetchRoster(kelas) {
         }
       })
       const rosterData = response?.data?.data || response?.data || []
-      if (Array.isArray(rosterData) && rosterData.length > 0) {
+      if (Array.isArray(rosterData)) {
         kelas.peserta = rosterData.map((m, idx) => ({
           _key: String(m.nim || m.id_kelas_master || idx),
           id_kelas_master: m.id_kelas_master,
           nim: m.nim,
           nama: m.nama_mahasiswa || `Mahasiswa ${m.nim}`,
-          manual_status: m.status_presensi || 'H',
+          manual_status: m.status_presensi || '',
           metode: m.metode
         }))
         success = true
         break
       }
     } catch (e) {
-      console.warn(`Roster fetch failed on ${endpoint}:`, e)
+      console.warn(`Roster fetch failed on ${endpoint}:`, e?.response?.status, e?.response?.data || e)
     }
   }
   loading.value = false
@@ -2511,17 +2516,21 @@ async function startKelas(kelas) {
     let success = false
 
     // Try Rifki's generateSession first
-    try {
-      const response = await api.post('https://api-admin-4c.rifkiaja.my.id:9002/api/presensi-sesi/generate', payloadRifki)
-      const sesi = response?.data?.data || response?.data || {}
-      sessionId = sesi.id || sesi.ID_SESI || sesi.ID_PRESENSI_SESI || null
-      sessionToken = sesi.session_token || ''
-      if (sessionToken) {
-        qrCode = makeQrImageFromToken(sessionToken)
-        success = true
+    for (const endpoint of GENERATE_SESSION_ENDPOINTS) {
+      if (!endpoint.startsWith('http')) continue
+      try {
+        const response = await api.post(endpoint, payloadRifki)
+        const sesi = response?.data?.data || response?.data || {}
+        sessionId = sesi.id || sesi.ID_SESI || sesi.ID_PRESENSI_SESI || null
+        sessionToken = sesi.session_token || ''
+        if (sessionToken) {
+          qrCode = makeQrImageFromToken(sessionToken)
+          success = true
+          break
+        }
+      } catch (e) {
+        console.warn(`Gagal membuat sesi QR di endpoint ${endpoint}:`, e)
       }
-    } catch (e) {
-      console.warn("Gagal membuat sesi QR di API Rifki, mencoba local start...", e)
     }
 
     // Fallback to local / standard start
@@ -2575,10 +2584,17 @@ async function endKelas(kelas) {
     const sessionId = kelas.qrSessionId
 
     if (sessionId) {
-      try {
-        await api.post(`https://api-admin-4c.rifkiaja.my.id:9002/api/presensi-sesi/${sessionId}/close`)
-      } catch (e) {
-        console.warn("Gagal menutup sesi QR di API Rifki:", e)
+      const closeEndpoints = [
+        `https://api-admin-4c.rifkiaja.my.id:9002/api/akademik/presensi-sesi/${sessionId}/close`,
+        `https://api-admin-4c.rifkiaja.my.id:9002/api/presensi-sesi/${sessionId}/close`
+      ]
+      for (const endpoint of closeEndpoints) {
+        try {
+          await api.post(endpoint)
+          break
+        } catch (e) {
+          console.warn(`Gagal menutup sesi QR di endpoint ${endpoint}:`, e)
+        }
       }
     }
 
@@ -2648,17 +2664,26 @@ async function simpanPresensiManualMahasiswa(kelas) {
     let success = false
     let messageText = ''
 
-    try {
-      const response = await api.post('https://api-admin-4c.rifkiaja.my.id:9002/api/presensi-mahasiswa/batch-roll-call', payloadRifki)
-      success = true
-      messageText = response?.data?.message || 'Batch presensi berhasil disimpan ke API Rifki.'
-    } catch (e) {
-      console.warn("Gagal menyimpan ke API Rifki, mencoba fallback local...", e)
-      
-      const endpoint = ENDPOINTS?.absensi?.manual || '/api/absensi/manual'
-      const response = await api.post(endpoint, payloadLocal)
-      success = true
-      messageText = response?.data?.message || 'Presensi manual disimpan menggunakan mode fallback.'
+    for (const endpoint of BATCH_ROLL_CALL_ENDPOINTS) {
+      if (endpoint.startsWith('http')) {
+        try {
+          const response = await api.post(endpoint, payloadRifki)
+          success = true
+          messageText = response?.data?.message || 'Batch presensi berhasil disimpan ke API Rifki.'
+          break
+        } catch (e) {
+          console.warn(`Gagal menyimpan ke API Rifki di ${endpoint}:`, e)
+        }
+      } else {
+        try {
+          const response = await api.post(endpoint, payloadLocal)
+          success = true
+          messageText = response?.data?.message || 'Presensi manual disimpan menggunakan mode fallback.'
+          break
+        } catch (e) {
+          console.warn(`Gagal menyimpan ke API lokal di ${endpoint}:`, e)
+        }
+      }
     }
 
     if (success) {
