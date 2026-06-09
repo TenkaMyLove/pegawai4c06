@@ -4,7 +4,7 @@
     <aside class="sidebar">
       <!-- Brand / Poliban: selalu kembali ke Home -->
       <RouterLink :to="HOME_ROUTE" class="brand" aria-label="Simpadu Pegawai" @click.prevent="goHome">
-        <img class="brand-logo" src="/assets/images/logo-poliban.png" alt="Poliban" />
+        <img class="brand-logo" :src="logoPolibanUrl" alt="Poliban" />
         <div class="brand-text">
           <div class="brand-title">Simpadu</div>
           <div class="brand-sub">Pegawai Digital</div>
@@ -218,6 +218,9 @@ const router = useRouter()
 
 // route home pegawai (1 halaman)
 const HOME_ROUTE = '/pegawai/presensi'
+
+// logo dari folder public (runtime path, tidak di-transform Vite)
+const logoPolibanUrl = '/assets/images/logo-poliban.png'
 
 const loading = ref(false)
 const message = ref({ type: '', text: '' })
