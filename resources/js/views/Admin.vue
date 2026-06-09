@@ -1,13 +1,13 @@
 <template>
   <div class="admin-layout">
     <aside class="admin-sidebar">
-      <div class="brand">
+      <RouterLink to="/admin/dashboard" class="brand" aria-label="Kembali ke Dashboard">
         <img :src="logoUrl" alt="Logo Poliban" />
         <div>
           <h2>Simpadu</h2>
           <p>Admin Akademik Digital</p>
         </div>
-      </div>
+      </RouterLink>
 
       <nav class="menu">
         <RouterLink to="/admin/dashboard" class="menu-link">
@@ -77,7 +77,6 @@
           <div>
             <p class="eyebrow">Dashboard Admin Pegawai</p>
             <h2>Selamat datang, {{ userName }}</h2>
-            <span>Ringkasan data pegawai, jabatan, dan presensi hari ini.</span>
           </div>
         </div>
 
@@ -166,43 +165,62 @@
           </div>
         </div>
 
-        <form v-if="showPegawaiForm" class="card pegawai-form" @submit.prevent="handlePegawaiSubmit">
-          <h3>{{ isEditing ? 'Edit Pegawai' : 'Tambah Pegawai Baru' }}</h3>
+        
+        <div v-if="showPegawaiForm" class="modal-overlay" @click.self="closePegawaiModal">
+          <form class="card pegawai-form modal-card" @submit.prevent="handlePegawaiSubmit">
+            <div class="modal-head">
+              <h3>{{ isEditing ? 'Edit Pegawai' : 'Tambah Pegawai Baru' }}</h3>
+              <button class="modal-close" type="button" @click="closePegawaiModal" aria-label="Tutup">
+                ✕
+              </button>
+            </div>
 
-          <div class="form-grid">
-            <label>
-              <span>Nama Pegawai</span>
-              <input v-model="pegawaiForm.nama" type="text" placeholder="Nama pegawai" required />
-            </label>
+            <div class="form-grid">
+              <label>
+                <span>Nama Pegawai</span>
+                <input v-model="pegawaiForm.nama" type="text" placeholder="Nama pegawai" required />
+              </label>
 
-            <label>
-              <span>NIP / ID</span>
-              <input v-model="pegawaiForm.nip" type="text" placeholder="NIP / ID pegawai" :disabled="isEditing" required />
-            </label>
+              <label>
+                <span>NIP / ID</span>
+                <input
+                  v-model="pegawaiForm.nip"
+                  type="text"
+                  placeholder="NIP / ID pegawai"
+                  :disabled="isEditing"
+                  required
+                />
+              </label>
 
-            <label>
-              <span>Email</span>
-              <input v-model="pegawaiForm.email" type="email" placeholder="Email pegawai" />
-            </label>
+              <label>
+                <span>Email</span>
+                <input v-model="pegawaiForm.email" type="email" placeholder="Email pegawai" />
+              </label>
 
-            <label>
-              <span>Jabatan</span>
-              <input v-model="pegawaiForm.jabatan" type="text" placeholder="Contoh: Staff Akademik" required />
-            </label>
-          </div>
+              <label>
+                <span>Jabatan</span>
+                <select v-model="pegawaiForm.jabatan" required>
+                  <option value="" disabled>Pilih jabatan</option>
+                  <option v-for="jab in jabatanOptions" :key="jab" :value="jab">
+                    {{ jab }}
+                  </option>
+                </select>
+              </label>
+            </div>
 
-          <div class="form-actions">
-            <button class="secondary-btn" type="button" @click="resetPegawaiForm">
-              Reset
-            </button>
-            <button v-if="isEditing" class="danger-btn" type="button" @click="cancelEdit">
-              Batal Edit
-            </button>
-            <button class="primary-btn" type="submit" :disabled="loading">
-              {{ loading ? 'Menyimpan...' : (isEditing ? 'Simpan Perubahan' : 'Simpan Pegawai') }}
-            </button>
-          </div>
-        </form>
+            <div class="form-actions">
+              <button class="secondary-btn" type="button" @click="resetPegawaiForm">
+                Reset
+              </button>
+              <button v-if="isEditing" class="danger-btn" type="button" @click="cancelEdit">
+                Batal Edit
+              </button>
+              <button class="primary-btn" type="submit" :disabled="loading">
+                {{ loading ? 'Menyimpan...' : (isEditing ? 'Simpan Perubahan' : 'Simpan Pegawai') }}
+              </button>
+            </div>
+          </form>
+        </div>
 
         <div class="table-card">
           <table>
@@ -245,60 +263,83 @@
         </div>
       </section>
 
+      
       <!-- PRESENSI -->
       <section v-else-if="page === 'absensi'" class="page-section">
-        <div class="section-head">
-          <div>
-            <h2>Presensi Admin</h2>
-          </div>
-        </div>
+        <div class="presensi-admin-layout presensi-style-like-dosen">
+          <form class="card presensi-harian-card" @submit.prevent="submitAbsensi">
+            <h3 class="presensi-card-title">Presensi Harian</h3>
 
-        <div class="presensi-admin-layout">
-          <form class="card form-card presensi-card" @submit.prevent="submitAbsensi">
-            <div class="presensi-mode-grid">
+            <div class="presensi-info-grid">
+              <div class="presensi-info-box">
+                <small>TANGGAL</small>
+                <strong>{{ presensiTanggalLabel }}</strong>
+              </div>
+              <div class="presensi-info-box">
+                <small>NAMA</small>
+                <strong>{{ userName }}</strong>
+              </div>
+            </div>
+
+            <div class="presensi-mode-switch">
               <button
                 type="button"
-                :class="['presensi-mode-card', { active: fasePresensi === 'datang' }]"
+                :class="['presensi-mode-btn', { active: fasePresensi === 'datang' }]"
                 @click="setFasePresensiManual('datang')"
               >
-                <span>📥</span>
-                <strong>Presensi Datang</strong>
-                <small>Check-in pegawai</small>
+                Datang
               </button>
 
               <button
                 type="button"
-                :class="['presensi-mode-card', { active: fasePresensi === 'pulang' }]"
+                :class="['presensi-mode-btn', { active: fasePresensi === 'pulang' }]"
+                :disabled="!bolehPilihPulang"
                 @click="setFasePresensiManual('pulang')"
               >
-                <span>📤</span>
-                <strong>Presensi Pulang</strong>
-                <small>Check-out pegawai</small>
+                Pulang
               </button>
             </div>
 
-            <button class="hadir-only-btn" type="submit" :disabled="loading || !bolehPresensiHariIni">
-              {{ loading ? 'Menyimpan...' : '✅ Hadir' }}
-            </button>
-          </form>
-
-          <article class="card">
-            <h3>Riwayat Presensi Admin</h3>
-
-            <div v-for="item in presensiList.slice(0, 8)" :key="item._key" class="history-row">
-              <div>
-                <strong>{{ item.nama || userName }}</strong>
-                <p>{{ item.tanggal || item.created_at || '-' }} · {{ item.jenis || '-' }}</p>
+            <div class="presensi-jam-box">
+              <div class="presensi-jam-row">
+                <span>Jam Datang</span>
+                <strong>{{ jamDatangHariIni }}</strong>
               </div>
-              <span :class="['pill', statusClass(item.status)]">{{ labelStatus(item.status) }}</span>
+              <div class="presensi-jam-row">
+                <span>Jam Pulang</span>
+                <strong>{{ jamPulangHariIni }}</strong>
+              </div>
             </div>
 
-            <p v-if="presensiList.length === 0" class="empty">Belum ada riwayat presensi.</p>
+            <button class="presensi-submit-btn" type="submit" :disabled="loading || !bisaSubmitPresensi">
+              {{ loading ? 'Menyimpan...' : 'Presensi' }}
+            </button>
+
+          </form>
+
+          <article class="card riwayat-presensi-card">
+            <h3 class="riwayat-title">Riwayat Presensi</h3>
+
+            <div class="riwayat-list">
+              <div v-for="row in riwayatPresensiGrouped.slice(0, 10)" :key="row._key" class="riwayat-item">
+                <div class="riwayat-item-head">
+                  <strong class="riwayat-date">{{ row.label }}</strong>
+                  <span :class="['pill', row.lengkap ? 'ok' : 'danger']">
+                    {{ row.lengkap ? 'Lengkap' : '-' }}
+                  </span>
+                </div>
+
+                <div class="riwayat-meta">
+                  Datang:{{ row.datang || '-' }} · Pulang:{{ row.pulang || '-' }}
+                </div>
+              </div>
+
+              <p v-if="riwayatPresensiGrouped.length === 0" class="empty">Belum ada riwayat presensi.</p>
+            </div>
           </article>
         </div>
       </section>
-
-      <!-- REKAP -->
+<!-- REKAP -->
       <section v-else-if="page === 'rekap'" class="page-section">
         <div class="section-head">
           <div>
@@ -451,11 +492,6 @@
               <input v-model="profileForm.role" type="text" placeholder="admin" />
             </label>
 
-            <label>
-              <span>No. HP</span>
-              <input v-model="profileForm.no_hp" type="text" placeholder="Nomor HP" />
-            </label>
-
             <label class="full">
               <span>Alamat</span>
               <textarea v-model="profileForm.alamat" placeholder="Alamat lengkap"></textarea>
@@ -478,11 +514,12 @@
 </template>
 
 <script setup>
-const logoUrl = '/assets/images/logo-poliban.png'
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../services/api'
 import ENDPOINTS from '../services/endpoints'
+
+const logoUrl = '/assets/images/logo-poliban.png'
 
 const props = defineProps({
   page: {
@@ -530,6 +567,29 @@ const pegawaiForm = reactive({
   jabatan: '',
 })
 
+const jabatanOptions = computed(() => {
+  const set = new Set([
+    'Admin Pegawai',
+    'Staff Akademik',
+    'Tendik',
+    'Dosen',
+    'Pegawai',
+  ])
+
+  pegawaiList.value.forEach((p) => {
+    const val = p?.jabatan || p?.role
+    if (val) set.add(String(val).trim())
+  })
+
+  // Pastikan jabatan yang sedang diedit tetap muncul di dropdown.
+  if (pegawaiForm.jabatan) set.add(String(pegawaiForm.jabatan).trim())
+
+  return Array.from(set)
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b, 'id'))
+})
+
+
 const profileForm = reactive({
   nama: '',
   email: '',
@@ -548,15 +608,6 @@ const pageTitle = computed(() => ({
   log: 'Log Aktivitas',
   profil: 'Profil Admin Pegawai',
 }[props.page] || 'Dashboard Admin'))
-
-const pageSubtitle = computed(() => ({
-  dashboard: 'Total pegawai, jabatan, dan presensi hari ini',
-  pegawai: 'Tambah dan kelola data pegawai',
-  absensi: 'Presensi datang dan pulang',
-  rekap: 'Rekap presensi seluruh pegawai',
-  log: 'Aktivitas CRUD dan presensi admin',
-  profil: 'Data lengkap admin pegawai',
-}[props.page] || 'Ringkasan data dan aktivitas sistem'))
 
 const userName = computed(() => (
   profileForm.nama ||
@@ -613,6 +664,129 @@ const presensiHariIni = computed(() => {
 })
 
 const totalPresensiHariIni = computed(() => presensiHariIni.value.length)
+
+
+const currentUserIdKey = computed(() => {
+  return String(
+    profileForm.nip ||
+      user.value.id_pegawai ||
+      user.value.pegawai_id ||
+      user.value.id ||
+      user.value.NIP ||
+      user.value.nip ||
+      ''
+  ).trim()
+})
+
+const currentUserEmailKey = computed(() => {
+  return String(profileForm.email || user.value.email || user.value.EMAIL || '')
+    .trim()
+    .toLowerCase()
+})
+
+const todayIsoKey = computed(() => liveNow.value.toLocaleDateString('en-CA'))
+
+function toIsoDateKey(value) {
+  const raw = String(value || '').trim()
+  if (!raw) return ''
+
+  // Already ISO date
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw
+
+  // ISO datetime
+  if (/^\d{4}-\d{2}-\d{2}T/.test(raw)) return raw.slice(0, 10)
+
+  // Common dd/mm/yyyy (treat as day/month/year)
+  const m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+  if (m) {
+    const day = m[1].padStart(2, '0')
+    const month = m[2].padStart(2, '0')
+    const year = m[3]
+    return `${year}-${month}-${day}`
+  }
+
+  const parsed = new Date(raw)
+  if (!Number.isNaN(parsed.getTime())) return parsed.toLocaleDateString('en-CA')
+
+  return raw
+}
+
+const presensiSaya = computed(() => {
+  const uid = currentUserIdKey.value
+  const email = currentUserEmailKey.value
+
+  return presensiList.value.filter((item) => {
+    if (!item) return false
+    const itemId = String(item.id_pegawai || item.nip || '').trim()
+    const itemEmail = String(item.email || '').trim().toLowerCase()
+
+    if (uid && itemId && itemId === uid) return true
+    if (email && itemEmail && itemEmail === email) return true
+
+    return false
+  })
+})
+
+const riwayatPresensiGrouped = computed(() => {
+  const map = new Map()
+
+  presensiSaya.value.forEach((item) => {
+    const iso = toIsoDateKey(item.tanggal || item.created_at)
+    if (!iso) return
+
+    const existing = map.get(iso) || {
+      _key: `riwayat-${iso}`,
+      iso,
+      label: iso,
+      datang: '',
+      pulang: '',
+    }
+
+    if (!existing.datang && item.waktu_masuk) existing.datang = item.waktu_masuk
+    if (!existing.pulang && item.waktu_keluar) existing.pulang = item.waktu_keluar
+
+    map.set(iso, existing)
+  })
+
+  const list = Array.from(map.values()).map((row) => ({
+    ...row,
+    lengkap: Boolean(row.datang && row.pulang),
+  }))
+
+  list.sort((a, b) => String(b.iso).localeCompare(String(a.iso)))
+  return list
+})
+
+const presensiHariIniRow = computed(() => {
+  return riwayatPresensiGrouped.value.find((row) => row.iso === todayIsoKey.value) || null
+})
+
+const jamDatangHariIni = computed(() => presensiHariIniRow.value?.datang || '-')
+const jamPulangHariIni = computed(() => presensiHariIniRow.value?.pulang || '-')
+
+const presensiTanggalLabel = computed(() => {
+  const d = liveNow.value
+  return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`
+})
+
+const bolehPilihPulang = computed(() => {
+  // Pulang hanya bisa dipilih jika sudah ada jam datang hari ini
+  return Boolean(presensiHariIniRow.value?.datang)
+})
+
+const bisaSubmitPresensi = computed(() => {
+  if (!bolehPresensiHariIni.value) return false
+
+  // Jika sudah lengkap (datang & pulang), jangan izinkan submit lagi
+  if (presensiHariIniRow.value?.datang && presensiHariIniRow.value?.pulang) return false
+
+  // Pulang hanya valid jika sudah ada datang
+  if (fasePresensi.value === 'pulang' && !presensiHariIniRow.value?.datang) return false
+
+  return true
+})
+
+
 
 const rekapPresensi = computed(() => {
   const map = new Map()
@@ -698,6 +872,12 @@ const bolehPresensiHariIni = computed(() => {
 
 const fasePresensi = computed(() => {
   if (fasePresensiManual.value) return fasePresensiManual.value
+
+  // Defaultkan fase berdasarkan kondisi presensi hari ini:
+  // - Kalau belum datang, arahkan ke datang (supaya tombol Presensi bisa langsung dipencet).
+  // - Kalau sudah datang tapi belum pulang, arahkan ke pulang.
+  if (!presensiHariIniRow.value?.datang) return 'datang'
+  if (!presensiHariIniRow.value?.pulang) return 'pulang'
 
   const hour = liveNow.value.getHours()
   return hour < 12 ? 'datang' : 'pulang'
@@ -907,19 +1087,102 @@ function normalizePegawai(item, index = 0) {
 }
 
 function normalizePresensi(item, index = 0) {
-  const tanggal = item.tanggal || item.created_at || new Date().toLocaleDateString('id-ID')
+  const tanggal =
+    item.tanggal ||
+    item.tanggal_absen ||
+    item.tgl ||
+    item.created_at ||
+    new Date().toLocaleDateString('id-ID')
+
   const waktuMasuk =
     item.waktu_masuk ||
     item.jam_masuk ||
     item.check_in ||
     item.masuk ||
+    item.waktu_datang ||
+    item.datang ||
+    item.waktuMasuk ||
     ''
+
   const waktuKeluar =
     item.waktu_keluar ||
     item.jam_keluar ||
     item.check_out ||
     item.keluar ||
+    item.waktu_pulang ||
+    item.pulang ||
+    item.waktuKeluar ||
     ''
+
+  // Support struktur dosen (beberapa backend mengirim id_dosen/nama_dosen)
+  const idDosen =
+    item.id_dosen ||
+    item.ID_DOSEN ||
+    item.dosen_id ||
+    item.idDosen ||
+    item.dosenId ||
+    ''
+
+  const nipDosen =
+    item.nip_dosen ||
+    item.NIP_DOSEN ||
+    item.nipDosen ||
+    ''
+
+  const namaDosen =
+    item.nama_dosen ||
+    item.NAMA_DOSEN ||
+    item.namaDosen ||
+    ''
+
+  const emailDosen =
+    item.email_dosen ||
+    item.EMAIL_DOSEN ||
+    item.emailDosen ||
+    ''
+
+  const resolvedIdPegawai =
+    item.id_pegawai ||
+    item.pegawai_id ||
+    item.idPegawai ||
+    item.nip ||
+    item.NIP ||
+    idDosen ||
+    nipDosen ||
+    user.value.id_pegawai ||
+    user.value.pegawai_id ||
+    user.value.id ||
+    user.value.NIP ||
+    ''
+
+  const resolvedNama =
+    item.nama ||
+    item.nama_pegawai ||
+    item.NAMA_PEGAWAI ||
+    item.name ||
+    namaDosen ||
+    userName.value
+
+  const resolvedNip =
+    item.nip ||
+    item.NIP ||
+    item.id_pegawai ||
+    item.pegawai_id ||
+    nipDosen ||
+    idDosen ||
+    user.value.nip ||
+    user.value.NIP ||
+    ''
+
+  const resolvedEmail =
+    item.email ||
+    item.EMAIL ||
+    emailDosen ||
+    user.value.email ||
+    user.value.EMAIL ||
+    ''
+
+  const keyBasis = resolvedIdPegawai || resolvedNip || resolvedNama || 'absensi'
 
   return {
     ...item,
@@ -927,39 +1190,12 @@ function normalizePresensi(item, index = 0) {
       item.id_absensi ||
       item.id ||
       item._key ||
-      `${item.id_pegawai || item.nip || item.nama || 'absensi'}-${tanggal}-${waktuMasuk}-${waktuKeluar}-${index}`,
+      `${keyBasis}-${tanggal}-${waktuMasuk}-${waktuKeluar}-${index}`,
     id_absensi: item.id_absensi || item.id || item.ID || '',
-    id_pegawai:
-      item.id_pegawai ||
-      item.pegawai_id ||
-      item.idPegawai ||
-      item.nip ||
-      item.NIP ||
-      user.value.id_pegawai ||
-      user.value.pegawai_id ||
-      user.value.id ||
-      user.value.NIP ||
-      '',
-    nama:
-      item.nama ||
-      item.nama_pegawai ||
-      item.NAMA_PEGAWAI ||
-      item.name ||
-      userName.value,
-    nip:
-      item.nip ||
-      item.NIP ||
-      item.id_pegawai ||
-      item.pegawai_id ||
-      user.value.nip ||
-      user.value.NIP ||
-      '',
-    email:
-      item.email ||
-      item.EMAIL ||
-      user.value.email ||
-      user.value.EMAIL ||
-      '',
+    id_pegawai: resolvedIdPegawai,
+    nama: resolvedNama,
+    nip: resolvedNip,
+    email: resolvedEmail,
     tanggal,
     waktu_masuk: waktuMasuk,
     waktu_keluar: waktuKeluar,
@@ -1259,6 +1495,16 @@ function startEdit(row) {
 function cancelEdit() {
   isEditing.value = false
   editingNip.value = ''
+  resetPegawaiForm()
+}
+
+
+function closePegawaiModal() {
+  showPegawaiForm.value = false
+  if (isEditing.value) {
+    cancelEdit()
+    return
+  }
   resetPegawaiForm()
 }
 
@@ -1610,6 +1856,9 @@ watch(
 
 .brand {
   display: flex;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
   align-items: center;
   gap: 12px;
   padding: 12px;
@@ -2142,6 +2391,54 @@ td {
   font-weight: 900;
 }
 
+/* Modal tambah/edit pegawai */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 120;
+}
+
+.modal-card {
+  width: min(760px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+}
+
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.modal-head h3 {
+  margin: 0;
+}
+
+.modal-close {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  border: 1px solid #d8e2ef;
+  background: #ffffff;
+  color: #0f172a;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.modal-close:hover {
+  background: #f1f5f9;
+}
+
+
 .status-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2170,13 +2467,21 @@ td {
 
 textarea,
 .profile-form input,
-.pegawai-form input {
+.pegawai-form input,
+.pegawai-form select {
   width: 100%;
   border: 1px solid #d8e2ef;
   border-radius: 14px;
   padding: 12px 14px;
   outline: none;
   background: #ffffff;
+}
+
+
+.pegawai-form select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
 }
 
 textarea {
@@ -2773,6 +3078,228 @@ textarea {
 .admin-logs-scroll::-webkit-scrollbar-thumb:hover,
 .table-card::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.2);
+}
+
+
+/* Presensi layout (mirip Presensi Dosen) */
+.presensi-style-like-dosen {
+  display: grid;
+  grid-template-columns: minmax(340px, 380px) minmax(340px, 380px);
+  justify-content: center;
+  gap: 26px;
+}
+
+@media (max-width: 980px) {
+  .presensi-style-like-dosen {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+}
+
+.presensi-harian-card {
+  padding: 26px 26px 22px !important;
+  max-width: 380px;
+  width: 100%;
+}
+
+.presensi-card-title {
+  margin: 0 0 18px;
+  text-align: center;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.presensi-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.presensi-info-box {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 14px 12px;
+  text-align: center;
+}
+
+.presensi-info-box small {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: #64748b;
+}
+
+.presensi-info-box strong {
+  font-size: 14px;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.presensi-mode-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.presensi-mode-btn {
+  height: 42px;
+  border-radius: 14px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  font-weight: 900;
+  color: #0f172a;
+  cursor: pointer;
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.06);
+}
+
+.presensi-mode-btn.active {
+  border-color: #cbd5e1;
+  background: #ffffff;
+}
+
+.presensi-mode-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.presensi-jam-box {
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 14px 14px;
+  margin-bottom: 18px;
+  background: #ffffff;
+}
+
+.presensi-jam-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.presensi-jam-row strong {
+  color: #0f172a;
+  font-weight: 900;
+  font-size: 13px;
+}
+
+.presensi-submit-btn {
+  width: 100%;
+  height: 52px;
+  border: none;
+  border-radius: 14px;
+  background: #44b68a;
+  color: #ffffff;
+  font-weight: 900;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 16px 30px rgba(68, 182, 138, 0.22);
+}
+
+.presensi-submit-btn:hover {
+  background: #36a97c;
+}
+
+.presensi-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.presensi-note {
+  margin: 12px 0 0;
+  text-align: center;
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 700;
+}
+
+.riwayat-presensi-card {
+  padding: 22px !important;
+  max-width: 380px;
+  width: 100%;
+}
+
+.riwayat-title {
+  margin: 0 0 16px;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.riwayat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: 520px;
+  overflow: auto;
+  padding-right: 6px;
+}
+
+.riwayat-item {
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  padding: 14px;
+  background: #f8fafc;
+}
+
+.riwayat-item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.riwayat-date {
+  font-size: 14px;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.riwayat-meta {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+/* Presensi Admin (rapatkan jarak antar kartu seperti contoh) */
+.presensi-admin-layout.presensi-style-like-dosen {
+  /* kunci lebar layout agar dua kartu tidak terpencar jauh */
+  max-width: 860px;
+  margin: 0 auto;
+  justify-content: center;
+  gap: 26px !important;
+  grid-template-columns: minmax(340px, 360px) minmax(340px, 360px) !important;
+}
+
+.presensi-admin-layout.presensi-style-like-dosen .presensi-harian-card,
+.presensi-admin-layout.presensi-style-like-dosen .riwayat-presensi-card {
+  width: 100%;
+  max-width: 360px;
+}
+
+@media (max-width: 920px) {
+  .presensi-admin-layout.presensi-style-like-dosen {
+    max-width: 520px;
+    grid-template-columns: 1fr !important;
+  }
+
+  .presensi-admin-layout.presensi-style-like-dosen .presensi-harian-card,
+  .presensi-admin-layout.presensi-style-like-dosen .riwayat-presensi-card {
+    max-width: 100%;
+  }
 }
 </style>
 

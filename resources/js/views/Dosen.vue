@@ -1,13 +1,13 @@
 <template>
   <div class="dashboard-layout">
     <aside class="side-nav">
-      <div class="mini-brand">
+      <RouterLink to="/dosen/dashboard" class="mini-brand">
         <img :src="logoUrl" alt="Logo" />
         <div>
           <h3>Simpadu</h3>
           <span>Dosen Akademik Digital</span>
         </div>
-      </div>
+      </RouterLink>
 
       <nav>
         <RouterLink to="/dosen/dashboard" class="menu-item">
@@ -48,16 +48,17 @@
       <header class="workspace-top">
         <div>
           <h1>{{ title }}</h1>
-          <p v-if="page === 'profil'">Lihat dan kelola identitas akun dosen</p>
-          <p v-else-if="page === 'dashboard'">Ringkasan aktivitas akademik dosen</p>
-          <p v-else-if="page === 'kelas'">Kelola jadwal mengajar dan peserta kelas</p>
-          <p v-else-if="page === 'nilai'">Input nilai mahasiswa berdasarkan kelas</p>
-          <p v-else-if="page === 'validasi-krs'">Validasi rencana studi mahasiswa (KRS)</p>
-          <p v-else>Catat presensi harian dosen</p>
         </div>
 
         <div class="top-actions">
-          <span>🔔</span>
+          <button
+            type="button"
+            class="refresh-btn"
+            :disabled="loading"
+            @click="refreshData"
+          >
+            {{ loading ? 'Memuat...' : 'Refresh Data' }}
+          </button>
         </div>
       </header>
 
@@ -128,7 +129,6 @@
       <section v-else-if="page === 'dashboard'" class="page-section">
         <div class="welcome-card">
           <h2>Selamat Datang, {{ userName }}</h2>
-          <p>Ringkasan aktivitas akademik berdasarkan kelas yang tersedia.</p>
         </div>
 
         <div class="stats-row four">
@@ -197,7 +197,6 @@
         <div v-if="!selectedKelasDetail" class="kelas-header">
           <div>
             <h2>Jadwal Mengajar</h2>
-            <p>Pilih salah satu kelas untuk membuka halaman detail kelas.</p>
           </div>
 
           <button class="refresh-btn" type="button" @click="refreshData">
@@ -1020,6 +1019,11 @@ const kelasId = ref('')
 const statusPresensi = ref('H')
 const keteranganPresensi = ref('')
 const modePresensi = ref('masuk')
+
+const isWeekday = computed(() => {
+  const day = new Date().getDay()
+  return day !== 0 && day !== 6
+})
 const presensiHariIni = ref(null)
 const selectedKelasId = ref('')
 const pertemuanKe = ref(1)
@@ -3118,6 +3122,7 @@ watch(
 </script>
 
 <style scoped>
+
 * {
   box-sizing: border-box;
 }
@@ -3156,6 +3161,9 @@ watch(
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.12);
   margin-bottom: 28px;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
 }
 
 .mini-brand img {
@@ -3307,30 +3315,63 @@ watch(
 }
 
 .top-actions {
-  width: 42px;
-  height: 42px;
-  border-radius: 16px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  display: grid;
-  place-items: center;
-  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex: 0 0 auto;
 }
 
-.top-actions::after {
-  content: "3";
-  position: absolute;
-  top: -6px;
-  right: -6px;
-  width: 18px;
-  height: 18px;
-  border-radius: 999px;
-  background: #ef4444;
-  color: #ffffff;
-  font-size: 10px;
-  display: grid;
-  place-items: center;
+
+.refresh-btn {
+  border: none;
+  border-radius: 14px;
+  padding: 12px 18px;
   font-weight: 900;
+  cursor: pointer;
+  background: #062b49;
+  color: #ffffff;
+  box-shadow: 0 12px 24px rgba(6, 43, 73, 0.16);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.refresh-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 28px rgba(6, 43, 73, 0.2);
+}
+
+.refresh-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+
+.top-action-btn {
+  height: 42px;
+  padding: 0 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  border: 1px solid #d8e2ef;
+  color: #062b49;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.02);
+}
+
+.top-action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 18px rgba(15, 23, 42, 0.06);
+}
+
+
+.top-action-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .page-section {
@@ -3644,9 +3685,23 @@ watch(
 .nilai-layout,
 .presensi-layout {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 22px;
-  align-items: stretch;
+  grid-template-columns: minmax(520px, 680px) minmax(420px, 520px);
+  gap: 24px;
+  align-items: start;
+  max-width: 1140px;
+  margin: 0 auto;
+}
+
+.presensi-panel,
+.history-card {
+  width: 100%;
+}
+
+@media (max-width: 1100px) {
+  .presensi-layout {
+    grid-template-columns: 1fr;
+    max-width: 680px;
+  }
 }
 
 /* Biar card Presensi & Riwayat sejajar (tinggi sama) */
@@ -7140,4 +7195,5 @@ const logoUrl = '/assets/images/logo-poliban.png' dan semua function tidak diuba
 .manual-scroll-list::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.2);
 }
+
 </style>
