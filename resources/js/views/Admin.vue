@@ -1009,17 +1009,26 @@ function normalizeJabatan(value) {
 function normalizePegawai(item, index = 0) {
   const nested = item?.pegawai || item?.user || item?.akun || item?.profile || item?.dosen || {}
 
+  const getJabatanValue = (val) => {
+    if (Array.isArray(val)) {
+      return val.length > 0 ? val : null
+    }
+    return val
+  }
+
   const jabatan = normalizeJabatan(
     item?.nama_jabatan ||
       item?.namaJabatan ||
-      item?.jabatan ||
+      getJabatanValue(item?.jabatan) ||
+      item?.unit_kerja ||
       item?.role ||
       item?.roles ||
       item?.posisi ||
       item?.UNIT_KERJA ||
       nested?.nama_jabatan ||
       nested?.namaJabatan ||
-      nested?.jabatan ||
+      getJabatanValue(nested?.jabatan) ||
+      nested?.unit_kerja ||
       nested?.role ||
       nested?.roles ||
       nested?.posisi ||
