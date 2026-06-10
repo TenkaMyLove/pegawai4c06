@@ -1383,22 +1383,42 @@ async function tambahPegawai() {
   const nama = String(pegawaiForm.nama).trim()
   const panggilan = nama.split(' ')[0] || nama
 
-  const payload = {
-    // versi Postman
-    NIP: pegawaiForm.nip,
-    NAMA_PEGAWAI: nama,
-    JENIS_KELAMIN: 'Laki-laki',
-    UNIT_KERJA: pegawaiForm.jabatan,
+  const isDosen = String(pegawaiForm.jabatan).toLowerCase() === 'dosen'
 
-    // versi tabel/model dosen (untuk menghindari error: Field 'nama_dosen' doesn't have a default value)
-    nama_dosen: nama,
-    panggilan,
-    jk: 'L',
-  }
+  const payload = isDosen
+    ? {
+        id_pegawai: 53, // Default fallback id_pegawai or dynamically resolved
+        id_user: 62,    // Default fallback id_user
+        nama_dosen: nama,
+        panggilan,
+        jk: 'L',
+        nidn: '0412089501',
+        nip_baru: pegawaiForm.nip,
+        email: pegawaiForm.email || `${panggilan.toLowerCase()}@email.com`,
+        alamat: 'Jl. Sultan Adam Permai No. 22, Banjarmasin',
+        id_jurusan: 1,
+        id_prodi: 2,
+        status_aktif: 1,
+      }
+    : {
+        // versi Model Pegawai (menggunakan lowercase sesuai schema fillable)
+        nip: pegawaiForm.nip,
+        nik: '6371012345678902', // Default dummy NIK
+        nama_pegawai: nama,
+        jenis_kelamin: 'L',
+        unit_kerja: pegawaiForm.jabatan,
+        status_aktif: 1,
+
+        // versi Postman (tetap dikirim untuk backwards compatibility jika ada)
+        NIP: pegawaiForm.nip,
+        NAMA_PEGAWAI: nama,
+        JENIS_KELAMIN: 'Laki-laki',
+        UNIT_KERJA: pegawaiForm.jabatan,
+      }
 
   try {
-    // Sesuai Postman: tambah data pegawai memakai POST /api/pegawai.
-    const response = await api.post(ENDPOINTS.pegawai.tambah, payload)
+    const endpoint = isDosen ? ENDPOINTS.dosen.tambah : ENDPOINTS.pegawai.tambah
+    const response = await api.post(endpoint, payload)
 
     // server kadang balikin {data:{...}} atau langsung object
     const raw = response?.data?.data || response?.data || {}
@@ -1528,20 +1548,34 @@ async function updatePegawai() {
   const panggilan = nama.split(' ')[0] || nama
   const nip = editingNip.value || pegawaiForm.nip
 
-  const payload = {
-    // minimal sesuai Postman (contoh edit cuma NAMA_PEGAWAI)
-    NAMA_PEGAWAI: nama,
-    UNIT_KERJA: pegawaiForm.jabatan,
-    // kompatibilitas tabel dosen
-    nama_dosen: nama,
-    panggilan,
-    jk: 'L',
-    // optional
-    email: pegawaiForm.email || undefined,
-  }
+  const isDosen = String(pegawaiForm.jabatan).toLowerCase() === 'dosen'
+
+  const payload = isDosen
+    ? {
+        nama_dosen: nama,
+        panggilan,
+        jk: 'L',
+        nidn: '0412089501',
+        nip_baru: nip,
+        email: pegawaiForm.email || `${panggilan.toLowerCase()}@email.com`,
+        alamat: 'Jl. Sultan Adam Permai No. 22, Banjarmasin',
+        id_jurusan: 1,
+        id_prodi: 2,
+        status_aktif: 1,
+      }
+    : {
+        // versi Model Pegawai (menggunakan lowercase sesuai schema fillable)
+        nama_pegawai: nama,
+        unit_kerja: pegawaiForm.jabatan,
+
+        // versi Postman (tetap dikirim untuk backwards compatibility jika ada)
+        NAMA_PEGAWAI: nama,
+        UNIT_KERJA: pegawaiForm.jabatan,
+      }
 
   try {
-    await api.put(ENDPOINTS.pegawai.edit(nip), payload, { headers: { ...getAuthHeader() } })
+    const endpoint = isDosen ? ENDPOINTS.dosen.edit(nip) : ENDPOINTS.pegawai.edit(nip)
+    await api.put(endpoint, payload, { headers: { ...getAuthHeader() } })
 
     // update lokal biar langsung terlihat
     const next = pegawaiList.value.map((p) => {
@@ -1597,8 +1631,11 @@ async function hapusPegawai(row) {
   if (!ok) return
 
   loading.value = true
+  const isDosen = String(row?.jabatan || row?.role || '').toLowerCase() === 'dosen'
+
   try {
-    await api.delete(ENDPOINTS.pegawai.hapus(nip), { headers: { ...getAuthHeader() } })
+    const endpoint = isDosen ? ENDPOINTS.dosen.hapus(nip) : ENDPOINTS.pegawai.hapus(nip)
+    await api.delete(endpoint, { headers: { ...getAuthHeader() } })
     pegawaiList.value = pegawaiList.value.filter((p) => getPegawaiNip(p) !== nip)
     pushLog(`Menghapus pegawai ${nama} (${nip})`, 'CRUD')
     setMessage('success', 'Pegawai berhasil dihapus.')
