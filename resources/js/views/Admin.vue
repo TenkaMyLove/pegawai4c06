@@ -1009,11 +1009,15 @@ function normalizePegawai(item, index = 0) {
   const nested = item?.pegawai || item?.user || item?.akun || item?.profile || item?.dosen || {}
 
   const jabatan = normalizeJabatan(
-    item?.jabatan ||
+    item?.nama_jabatan ||
+      item?.namaJabatan ||
+      item?.jabatan ||
       item?.role ||
       item?.roles ||
       item?.posisi ||
       item?.UNIT_KERJA ||
+      nested?.nama_jabatan ||
+      nested?.namaJabatan ||
       nested?.jabatan ||
       nested?.role ||
       nested?.roles ||
