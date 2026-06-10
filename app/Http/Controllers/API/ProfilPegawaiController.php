@@ -20,19 +20,13 @@ class ProfilPegawaiController extends Controller
         $request->validate([
             'alamat' => 'nullable|string|max:255',
             'jenis_kelamin' => 'nullable|in:L,P',
-            'nik' => 'nullable|string|max:255',
         ]);
-
-        $user = $request->user();
-        $isAdmin = strtolower($user->role ?? '') === 'admin';
-
-        $allowedFields = ['alamat', 'nik'];
 
         return response()->json([
             'message' => 'Profil berhasil diperbarui',
             'data' => $service->updateProfile(
-                $user->id,
-                $request->only($allowedFields)
+                $request->user()->id,
+                $request->only(['alamat', 'jenis_kelamin'])
             )
         ]);
     }

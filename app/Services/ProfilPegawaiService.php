@@ -20,7 +20,6 @@ class ProfilPegawaiService
         $pegawai->update([
             'alamat' => $data['alamat'] ?? $pegawai->alamat,
             'jenis_kelamin' => $data['jenis_kelamin'] ?? $pegawai->jenis_kelamin,
-            'nik' => $data['nik'] ?? $pegawai->nik,
         ]);
 
         return $pegawai;
