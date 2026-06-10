@@ -193,6 +193,19 @@
               </label>
 
               <label>
+                <span>NIK</span>
+                <input v-model="pegawaiForm.nik" type="text" placeholder="NIK pegawai" required />
+              </label>
+
+              <label>
+                <span>Jenis Kelamin</span>
+                <select v-model="pegawaiForm.jenis_kelamin" required>
+                  <option value="L">Laki-laki</option>
+                  <option value="P">Perempuan</option>
+                </select>
+              </label>
+
+              <label>
                 <span>Email</span>
                 <input v-model="pegawaiForm.email" type="email" placeholder="Email pegawai" />
               </label>
@@ -204,6 +217,19 @@
                   <option v-for="jab in jabatanOptions" :key="jab" :value="jab">
                     {{ jab }}
                   </option>
+                </select>
+              </label>
+
+              <label>
+                <span>Alamat</span>
+                <input v-model="pegawaiForm.alamat" type="text" placeholder="Alamat pegawai" />
+              </label>
+
+              <label>
+                <span>Status Aktif</span>
+                <select v-model="pegawaiForm.status_aktif" required>
+                  <option :value="1">Aktif</option>
+                  <option :value="0">Non-Aktif</option>
                 </select>
               </label>
             </div>
@@ -293,7 +319,6 @@
               <button
                 type="button"
                 :class="['presensi-mode-btn', { active: fasePresensi === 'pulang' }]"
-                :disabled="!bolehPilihPulang"
                 @click="setFasePresensiManual('pulang')"
               >
                 Pulang
@@ -469,27 +494,47 @@
           <div class="form-grid">
             <label>
               <span>Nama Lengkap</span>
-              <input v-model="profileForm.nama" type="text" placeholder="Nama admin" />
+              <input :value="profileForm.nama" type="text" readonly />
             </label>
 
             <label>
               <span>Email</span>
-              <input v-model="profileForm.email" type="email" placeholder="Email admin" />
+              <input :value="profileForm.email" type="email" readonly />
             </label>
 
             <label>
               <span>NIP / Username</span>
-              <input v-model="profileForm.nip" type="text" placeholder="NIP atau username" />
+              <input :value="profileForm.nip" type="text" readonly />
+            </label>
+
+            <label>
+              <span>NIK</span>
+              <input v-model="profileForm.nik" type="text" placeholder="NIK admin" />
+            </label>
+
+            <label>
+              <span>Jenis Kelamin</span>
+              <input :value="profileForm.jenis_kelamin === 'P' ? 'Perempuan' : 'Laki-laki'" type="text" readonly />
             </label>
 
             <label>
               <span>Jabatan</span>
-              <input v-model="profileForm.jabatan" type="text" placeholder="Admin Pegawai" />
+              <input :value="profileForm.jabatan" type="text" readonly />
             </label>
 
             <label>
               <span>Role</span>
-              <input v-model="profileForm.role" type="text" placeholder="admin" />
+              <input :value="profileForm.role" type="text" readonly />
+            </label>
+
+            <label>
+              <span>Unit Kerja</span>
+              <input :value="profileForm.unit_kerja" type="text" readonly />
+            </label>
+
+            <label>
+              <span>Status Aktif</span>
+              <input :value="profileForm.status_aktif == 1 ? 'Aktif' : 'Non-Aktif'" type="text" readonly />
             </label>
 
             <label class="full">
@@ -566,6 +611,11 @@ const pegawaiForm = reactive({
   nip: '',
   email: '',
   jabatan: '',
+  nik: '',
+  jenis_kelamin: 'L',
+  alamat: '',
+  unit_kerja: '',
+  status_aktif: 1,
 })
 
 const jabatanOptions = computed(() => {
@@ -595,10 +645,14 @@ const profileForm = reactive({
   nama: '',
   email: '',
   nip: '',
+  nik: '',
+  jenis_kelamin: 'L',
   jabatan: 'Admin Pegawai',
   role: 'admin',
   no_hp: '',
   alamat: '',
+  unit_kerja: '',
+  status_aktif: 1,
 })
 
 const pageTitle = computed(() => ({
@@ -1082,6 +1136,36 @@ function normalizePegawai(item, index = 0) {
     nested?.ID_DOSEN ||
     ''
 
+  const nik =
+    item?.nik ||
+    item?.NIK ||
+    nested?.nik ||
+    nested?.NIK ||
+    ''
+
+  const jenis_kelamin =
+    item?.jenis_kelamin ||
+    item?.JENIS_KELAMIN ||
+    nested?.jenis_kelamin ||
+    nested?.JENIS_KELAMIN ||
+    'L'
+
+  const alamat =
+    item?.alamat ||
+    item?.ALAMAT ||
+    nested?.alamat ||
+    nested?.ALAMAT ||
+    ''
+
+  const status_aktif =
+    item?.status_aktif !== undefined ? item.status_aktif : (
+      item?.STATUS_AKTIF !== undefined ? item.STATUS_AKTIF : (
+        nested?.status_aktif !== undefined ? nested.status_aktif : (
+          nested?.STATUS_AKTIF !== undefined ? nested.STATUS_AKTIF : 1
+        )
+      )
+    )
+
   return {
     ...item,
     _key: id || nip || item?.username || `pegawai-${index}`,
@@ -1089,6 +1173,10 @@ function normalizePegawai(item, index = 0) {
     nama,
     nip,
     email,
+    nik,
+    jenis_kelamin,
+    alamat,
+    status_aktif,
     role: jabatan,
     jabatan,
   }
@@ -1387,17 +1475,22 @@ async function tambahPegawai() {
   const payload = {
     // versi Model Pegawai (menggunakan lowercase sesuai schema fillable)
     nip: pegawaiForm.nip,
-    nik: '6371012345678902', // Default dummy NIK
+    nik: pegawaiForm.nik || '',
     nama_pegawai: nama,
-    jenis_kelamin: 'L',
+    jenis_kelamin: pegawaiForm.jenis_kelamin || 'L',
     unit_kerja: pegawaiForm.jabatan,
-    status_aktif: 1,
+    alamat: pegawaiForm.alamat || '',
+    email: pegawaiForm.email || '',
+    status_aktif: pegawaiForm.status_aktif,
 
     // versi Postman (tetap dikirim untuk backwards compatibility jika ada)
     NIP: pegawaiForm.nip,
     NAMA_PEGAWAI: nama,
-    JENIS_KELAMIN: 'Laki-laki',
+    JENIS_KELAMIN: pegawaiForm.jenis_kelamin === 'P' ? 'Perempuan' : 'Laki-laki',
     UNIT_KERJA: pegawaiForm.jabatan,
+    NIK: pegawaiForm.nik || '',
+    ALAMAT: pegawaiForm.alamat || '',
+    STATUS_AKTIF: pegawaiForm.status_aktif,
   }
 
   try {
@@ -1418,6 +1511,10 @@ async function tambahPegawai() {
         user: raw?.user || { name: nama },
         nip: pegawaiForm.nip,
         NIP: pegawaiForm.nip,
+        nik: pegawaiForm.nik || '',
+        NIK: pegawaiForm.nik || '',
+        jenis_kelamin: pegawaiForm.jenis_kelamin || 'L',
+        JENIS_KELAMIN: pegawaiForm.jenis_kelamin || 'L',
         UNIT_KERJA: pegawaiForm.jabatan,
         jabatan: pegawaiForm.jabatan,
         role: pegawaiForm.jabatan,
@@ -1512,6 +1609,10 @@ function startEdit(row) {
   pegawaiForm.nip = nip
   pegawaiForm.email = row?.email || row?.user?.email || ''
   pegawaiForm.jabatan = row?.jabatan || row?.role || row?.UNIT_KERJA || row?.unit_kerja || ''
+  pegawaiForm.nik = row?.nik || row?.NIK || ''
+  pegawaiForm.jenis_kelamin = row?.jenis_kelamin || row?.JENIS_KELAMIN || 'L'
+  pegawaiForm.alamat = row?.alamat || row?.ALAMAT || ''
+  pegawaiForm.status_aktif = row?.status_aktif !== undefined ? row.status_aktif : (row?.STATUS_AKTIF !== undefined ? row.STATUS_AKTIF : 1)
 }
 
 function cancelEdit() {
@@ -1519,6 +1620,7 @@ function cancelEdit() {
   editingNip.value = ''
   editingId.value = ''
   resetPegawaiForm()
+  showPegawaiForm.value = false
 }
 
 
@@ -1549,11 +1651,20 @@ async function updatePegawai() {
   const payload = {
     // versi Model Pegawai (menggunakan lowercase sesuai schema fillable)
     nama_pegawai: nama,
+    nik: pegawaiForm.nik || '',
+    jenis_kelamin: pegawaiForm.jenis_kelamin || 'L',
     unit_kerja: pegawaiForm.jabatan,
+    alamat: pegawaiForm.alamat || '',
+    email: pegawaiForm.email || '',
+    status_aktif: pegawaiForm.status_aktif,
 
     // versi Postman (tetap dikirim untuk backwards compatibility jika ada)
     NAMA_PEGAWAI: nama,
+    NIK: pegawaiForm.nik || '',
+    JENIS_KELAMIN: pegawaiForm.jenis_kelamin === 'P' ? 'Perempuan' : 'Laki-laki',
     UNIT_KERJA: pegawaiForm.jabatan,
+    ALAMAT: pegawaiForm.alamat || '',
+    STATUS_AKTIF: pegawaiForm.status_aktif,
   }
 
   try {
@@ -1572,7 +1683,15 @@ async function updatePegawai() {
           nama_pegawai: nama,
           NAMA_PEGAWAI: nama,
           nama_dosen: nama,
+          nik: pegawaiForm.nik || '',
+          NIK: pegawaiForm.nik || '',
+          jenis_kelamin: pegawaiForm.jenis_kelamin || 'L',
+          JENIS_KELAMIN: pegawaiForm.jenis_kelamin || 'L',
           UNIT_KERJA: pegawaiForm.jabatan,
+          alamat: pegawaiForm.alamat || '',
+          ALAMAT: pegawaiForm.alamat || '',
+          status_aktif: pegawaiForm.status_aktif,
+          STATUS_AKTIF: pegawaiForm.status_aktif,
           jabatan: pegawaiForm.jabatan,
           role: pegawaiForm.jabatan,
           email: pegawaiForm.email,
@@ -1640,6 +1759,11 @@ function resetPegawaiForm() {
   pegawaiForm.nip = ''
   pegawaiForm.email = ''
   pegawaiForm.jabatan = ''
+  pegawaiForm.nik = ''
+  pegawaiForm.jenis_kelamin = 'L'
+  pegawaiForm.alamat = ''
+  pegawaiForm.unit_kerja = ''
+  pegawaiForm.status_aktif = 1
 }
 
 async function submitAbsensi() {
@@ -1650,13 +1774,13 @@ async function submitAbsensi() {
 
   // Check if already checked in
   if (fasePresensi.value === 'datang' && presensiHariIniRow.value?.datang) {
-    setMessage('info', 'Sudah presensi masuk hari ini')
+    setMessage('error', 'Sudah presensi masuk hari ini')
     return
   }
 
   // Check if already checked out
   if (fasePresensi.value === 'pulang' && presensiHariIniRow.value?.pulang) {
-    setMessage('info', 'Sudah presensi keluar hari ini')
+    setMessage('error', 'Sudah presensi keluar hari ini')
     return
   }
 
@@ -1764,10 +1888,14 @@ function initProfile() {
   profileForm.nama = user.value.nama || user.value.name || user.value.nama_pegawai || user.value.NAMA_PEGAWAI || 'Admin Pegawai'
   profileForm.email = user.value.email || user.value.EMAIL || 'adminpegawai@email.com'
   profileForm.nip = user.value.nip || user.value.NIP || user.value.username || 'ADMIN-001'
+  profileForm.nik = user.value.nik || user.value.NIK || ''
+  profileForm.jenis_kelamin = user.value.jenis_kelamin || user.value.JENIS_KELAMIN || 'L'
   profileForm.jabatan = normalizeJabatan(user.value.jabatan || user.value.role || 'Admin Pegawai')
   profileForm.role = user.value.role || user.value.tipe || 'admin'
   profileForm.no_hp = user.value.no_hp || user.value.noHp || user.value.telepon || '-'
   profileForm.alamat = user.value.alamat || user.value.ALAMAT || '-'
+  profileForm.unit_kerja = user.value.unit_kerja || user.value.UNIT_KERJA || user.value.jabatan || '-'
+  profileForm.status_aktif = user.value.status_aktif !== undefined ? user.value.status_aktif : (user.value.STATUS_AKTIF !== undefined ? user.value.STATUS_AKTIF : 1)
 }
 
 function openProfile() {
@@ -1806,7 +1934,8 @@ async function saveProfile() {
     // Sesuai Postman: PUT /api/pegawai/profile untuk update data profil akun login.
     await api.put(ENDPOINTS.pegawai.updateProfile, {
       alamat: profileForm.alamat || user.value.alamat || user.value.ALAMAT || '',
-      jenis_kelamin: user.value.jenis_kelamin || user.value.JENIS_KELAMIN || 'L',
+      jenis_kelamin: profileForm.jenis_kelamin || user.value.jenis_kelamin || user.value.JENIS_KELAMIN || 'L',
+      nik: profileForm.nik || user.value.nik || user.value.NIK || '',
     })
     pushLog('Admin memperbarui profil melalui API', 'CRUD')
     setMessage('success', 'Profil berhasil diperbarui.')

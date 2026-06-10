@@ -18,6 +18,7 @@ class Pegawai extends Model
         'nama_pegawai',
         'jenis_kelamin',
         'alamat',
+        'email',
         'unit_kerja',
         'id_user',
         'status_aktif',

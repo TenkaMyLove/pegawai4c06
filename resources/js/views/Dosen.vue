@@ -93,22 +93,42 @@
           <div class="form-grid">
             <label>
               <span>Nama Lengkap</span>
-              <input v-model="profileForm.nama" type="text" placeholder="Nama lengkap" readonly />
+              <input :value="profileForm.nama" type="text" readonly />
             </label>
 
             <label>
               <span>Email</span>
-              <input v-model="profileForm.email" type="email" placeholder="Email" />
+              <input :value="profileForm.email" type="email" readonly />
             </label>
 
             <label>
               <span>NIP / NIDN</span>
-              <input v-model="profileForm.nip" type="text" placeholder="NIP atau NIDN" readonly />
+              <input :value="profileForm.nip" type="text" readonly />
+            </label>
+
+            <label>
+              <span>NIK</span>
+              <input v-model="profileForm.nik" type="text" placeholder="Masukkan NIK" />
+            </label>
+
+            <label>
+              <span>Jenis Kelamin</span>
+              <input :value="profileForm.jenis_kelamin === 'P' ? 'Perempuan' : 'Laki-laki'" type="text" readonly />
             </label>
 
             <label>
               <span>Jabatan</span>
-              <input v-model="profileForm.jabatan" type="text" placeholder="Jabatan" readonly />
+              <input :value="profileForm.jabatan" type="text" readonly />
+            </label>
+
+            <label>
+              <span>Unit Kerja</span>
+              <input :value="profileForm.unit_kerja" type="text" readonly />
+            </label>
+
+            <label>
+              <span>Status Aktif</span>
+              <input :value="profileForm.status_aktif == 1 ? 'Aktif' : 'Non-Aktif'" type="text" readonly />
             </label>
 
             <label class="full">
@@ -1007,8 +1027,12 @@ const profileForm = ref({
   nama: '',
   email: '',
   nip: '',
+  nik: '',
+  jenis_kelamin: 'L',
   jabatan: 'Dosen',
   alamat: '',
+  unit_kerja: '',
+  status_aktif: 1,
 })
 
 const kelasSaya = ref([])
@@ -3091,18 +3115,22 @@ function initProfileForm() {
     nama: clean.nama || '',
     email: clean.email || '',
     nip: clean.nip || '',
+    nik: clean.nik || clean.NIK || '',
+    jenis_kelamin: clean.jenis_kelamin || clean.JENIS_KELAMIN || 'L',
     jabatan: formatJabatan(clean.jabatan),
     alamat: clean.alamat || '',
+    unit_kerja: clean.unit_kerja || clean.UNIT_KERJA || '',
+    status_aktif: clean.status_aktif !== undefined ? clean.status_aktif : (clean.STATUS_AKTIF !== undefined ? clean.STATUS_AKTIF : 1),
   }
 }
 
 async function saveProfile() {
   const updatedUser = {
     ...user.value,
-    email: profileForm.value.email,
-    EMAIL: profileForm.value.email,
     alamat: profileForm.value.alamat,
     ALAMAT: profileForm.value.alamat,
+    nik: profileForm.value.nik,
+    NIK: profileForm.value.nik,
     role: 'dosen',
     tipe: 'dosen',
   }
@@ -3113,9 +3141,9 @@ async function saveProfile() {
   try {
     await api.put(ENDPOINTS.pegawai.updateProfile, {
       alamat: profileForm.value.alamat || '',
-      jenis_kelamin: user.value.jk || user.value.jenis_kelamin || user.value.JENIS_KELAMIN || 'L',
+      nik: profileForm.value.nik || '',
     })
-    setMessage('success', 'Profil berhasil diperbarui. Email dan alamat berhasil disimpan.')
+    setMessage('success', 'Profil berhasil diperbarui. Alamat berhasil disimpan.')
   } catch {
     setMessage('info', 'Profil tersimpan di browser. API profil belum bisa menerima perubahan.')
   }

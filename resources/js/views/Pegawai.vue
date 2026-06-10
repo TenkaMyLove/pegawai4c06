@@ -142,8 +142,8 @@
                     <span>Pulang <strong>{{ item.jam_pulang || '-' }}</strong></span>
                   </div>
                 </div>
-                <div class="riwayat-badge" :class="item.lengkap ? 'ok' : 'no'">
-                  {{ item.lengkap ? 'Lengkap' : '-' }}
+                <div class="riwayat-badge" :class="item.lengkap ? 'ok' : (item.jam_datang && !item.jam_pulang ? 'warn' : 'no')">
+                  {{ item.lengkap ? 'Lengkap' : (item.jam_datang && !item.jam_pulang ? 'Belum Pulang' : '-') }}
                 </div>
               </div>
 
@@ -168,7 +168,7 @@
           <div class="card profile-detail">
             <h2>Data Pegawai</h2>
 
-            <div class="form-grid">
+            <form class="form-grid" @submit.prevent="saveProfile">
               <div class="field">
                 <label>Nama Lengkap</label>
                 <input type="text" :value="profile.nama || userName" readonly />
@@ -187,15 +187,34 @@
                 <input type="text" :value="jabatanText || '-'" readonly />
               </div>
 
+              <div class="field">
+                <label>NIK</label>
+                <input type="text" v-model="profile.nik" placeholder="Masukkan NIK" />
+              </div>
+              <div class="field">
+                <label>Jenis Kelamin</label>
+                <input type="text" :value="profile.jenis_kelamin === 'P' ? 'Perempuan' : 'Laki-laki'" readonly />
+              </div>
+
+              <div class="field">
+                <label>Unit Kerja</label>
+                <input type="text" :value="profile.unit_kerja || jabatanText || '-'" readonly />
+              </div>
+              <div class="field">
+                <label>Status Aktif</label>
+                <input type="text" :value="profile.status_aktif == 1 ? 'Aktif' : 'Non-Aktif'" readonly />
+              </div>
+
               <div class="field full">
                 <label>Alamat</label>
-                <textarea :value="profile.alamat || '-'" rows="3" readonly />
+                <textarea v-model="profile.alamat" rows="3" placeholder="Masukkan alamat lengkap"></textarea>
               </div>
-            </div>
 
-            <div class="form-actions">
-              <button class="btn-secondary" type="button" @click="goHome">Kembali</button>
-            </div>
+              <div class="form-actions" style="grid-column: 1 / -1; display: flex; gap: 1rem; margin-top: 1rem;">
+                <button class="btn-secondary" type="button" @click="goHome">Kembali</button>
+                <button class="btn-primary" type="submit">Simpan Profil</button>
+              </div>
+            </form>
           </div>
         </section>
       </template>
@@ -342,8 +361,38 @@ function normalizeProfile(p) {
     nik: toText(obj.nik) || toText(obj.NIK) || '',
     email: toText(obj.email) || toText(obj.EMAIL) || toText(obj.email_pegawai) || toText(obj.EMAIL_PEGAWAI) || '',
     alamat: toText(obj.alamat) || toText(obj.ALAMAT) || '',
+    jenis_kelamin: toText(obj.jenis_kelamin) || toText(obj.JENIS_KELAMIN) || 'L',
+    unit_kerja: toText(obj.unit_kerja) || toText(obj.UNIT_KERJA) || '',
+    status_aktif: obj.status_aktif !== undefined ? obj.status_aktif : (obj.STATUS_AKTIF !== undefined ? obj.STATUS_AKTIF : 1),
     // jabatan kadang berupa object (mis: {nama_jabatan: '...'}), maka wajib dinormalisasi ke string
     jabatan: toText(obj.jabatan) || toText(obj.JABATAN) || toText(obj.nama_jabatan) || toText(obj.NAMA_JABATAN) || '',
+  }
+}
+
+async function saveProfile() {
+  loading.value = true
+  try {
+    await api.put(ENDPOINTS.pegawai.updateProfile, {
+      nik: profile.value.nik || '',
+      alamat: profile.value.alamat || '',
+    })
+    
+    // Update local storage user data
+    const updatedUser = {
+      ...user.value,
+      nik: profile.value.nik,
+      alamat: profile.value.alamat,
+      NIK: profile.value.nik,
+      ALAMAT: profile.value.alamat,
+    }
+    user.value = updatedUser
+    localStorage.setItem('simpadu_user', JSON.stringify(updatedUser))
+
+    setMessage('success', 'Profil berhasil diperbarui.')
+  } catch (err) {
+    setMessage('error', 'Gagal menyimpan profil: ' + (err?.response?.data?.message || err.message))
+  } finally {
+    loading.value = false
   }
 }
 
@@ -645,6 +694,7 @@ onBeforeUnmount(() => {
 .riwayat-time-short .dot{opacity:.5}
 .riwayat-badge{min-width:82px;text-align:center;border-radius:999px;padding:6px 10px;font-weight:900;font-size:12px}
 .riwayat-badge.ok{background:#e6f9ee;color:#0c7a3d}
+.riwayat-badge.warn{background:#fff8e6;color:#b27b00}
 .riwayat-badge.no{background:#ffe9e9;color:#c92b2b}
 .riwayat-empty{color:#94a3b8;text-align:center;font-weight:800;padding:10px 0}
 
