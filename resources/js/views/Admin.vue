@@ -193,8 +193,21 @@
               </label>
 
               <label>
+                <span>NIK</span>
+                <input v-model="pegawaiForm.nik" type="text" placeholder="NIK (16 digit)" />
+              </label>
+
+              <label>
                 <span>Email</span>
                 <input v-model="pegawaiForm.email" type="email" placeholder="Email pegawai" />
+              </label>
+
+              <label>
+                <span>Jenis Kelamin</span>
+                <select v-model="pegawaiForm.jenis_kelamin">
+                  <option value="L">Laki-laki</option>
+                  <option value="P">Perempuan</option>
+                </select>
               </label>
 
               <label>
@@ -205,6 +218,11 @@
                     {{ jab }}
                   </option>
                 </select>
+              </label>
+
+              <label style="grid-column: 1 / -1">
+                <span>Alamat</span>
+                <input v-model="pegawaiForm.alamat" type="text" placeholder="Alamat pegawai" />
               </label>
             </div>
 
@@ -564,7 +582,10 @@ const absensiForm = reactive({
 const pegawaiForm = reactive({
   nama: '',
   nip: '',
+  nik: '',
   email: '',
+  alamat: '',
+  jenis_kelamin: 'L',
   jabatan: '',
 })
 
@@ -1387,16 +1408,17 @@ async function tambahPegawai() {
   const payload = {
     // versi Model Pegawai (menggunakan lowercase sesuai schema fillable)
     nip: pegawaiForm.nip,
-    nik: '6371012345678902', // Default dummy NIK
+    nik: pegawaiForm.nik || '',
     nama_pegawai: nama,
-    jenis_kelamin: 'L',
+    jenis_kelamin: pegawaiForm.jenis_kelamin || 'L',
+    alamat: pegawaiForm.alamat || '',
+    email: pegawaiForm.email || '',
     unit_kerja: pegawaiForm.jabatan,
-    status_aktif: 1,
 
     // versi Postman (tetap dikirim untuk backwards compatibility jika ada)
     NIP: pegawaiForm.nip,
     NAMA_PEGAWAI: nama,
-    JENIS_KELAMIN: 'Laki-laki',
+    JENIS_KELAMIN: pegawaiForm.jenis_kelamin === 'P' ? 'Perempuan' : 'Laki-laki',
     UNIT_KERJA: pegawaiForm.jabatan,
   }
 
@@ -1510,7 +1532,10 @@ function startEdit(row) {
 
   pegawaiForm.nama = row?.nama || row?.nama_pegawai || row?.NAMA_PEGAWAI || row?.nama_dosen || row?.user?.name || ''
   pegawaiForm.nip = nip
+  pegawaiForm.nik = row?.nik || row?.NIK || ''
   pegawaiForm.email = row?.email || row?.user?.email || ''
+  pegawaiForm.alamat = row?.alamat || row?.ALAMAT || ''
+  pegawaiForm.jenis_kelamin = row?.jenis_kelamin || row?.JENIS_KELAMIN || 'L'
   pegawaiForm.jabatan = row?.jabatan || row?.role || row?.UNIT_KERJA || row?.unit_kerja || ''
 }
 
@@ -1518,6 +1543,7 @@ function cancelEdit() {
   isEditing.value = false
   editingNip.value = ''
   editingId.value = ''
+  showPegawaiForm.value = false
   resetPegawaiForm()
 }
 
@@ -1549,6 +1575,10 @@ async function updatePegawai() {
   const payload = {
     // versi Model Pegawai (menggunakan lowercase sesuai schema fillable)
     nama_pegawai: nama,
+    nik: pegawaiForm.nik || '',
+    jenis_kelamin: pegawaiForm.jenis_kelamin || 'L',
+    alamat: pegawaiForm.alamat || '',
+    email: pegawaiForm.email || '',
     unit_kerja: pegawaiForm.jabatan,
 
     // versi Postman (tetap dikirim untuk backwards compatibility jika ada)
@@ -1638,7 +1668,10 @@ async function hapusPegawai(row) {
 function resetPegawaiForm() {
   pegawaiForm.nama = ''
   pegawaiForm.nip = ''
+  pegawaiForm.nik = ''
   pegawaiForm.email = ''
+  pegawaiForm.alamat = ''
+  pegawaiForm.jenis_kelamin = 'L'
   pegawaiForm.jabatan = ''
 }
 
