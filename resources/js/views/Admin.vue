@@ -535,6 +535,7 @@ const message = ref({ type: '', text: '' })
 const showPegawaiForm = ref(false)
 const isEditing = ref(false)
 const editingNip = ref('')
+const editingId = ref('')
 const liveNow = ref(new Date())
 const rekapFilterMode = ref('hari')
 const rekapFilterDate = ref(new Date().toLocaleDateString('en-CA'))
@@ -1499,8 +1500,21 @@ function getPegawaiNip(row) {
   )
 }
 
+function getPegawaiId(row) {
+  return (
+    row?.id_pegawai ||
+    row?.pegawai?.id_pegawai ||
+    row?.id ||
+    row?.ID ||
+    row?.nip ||
+    row?.NIP ||
+    ''
+  )
+}
+
 function startEdit(row) {
   const nip = getPegawaiNip(row)
+  const id = getPegawaiId(row)
   if (!nip) {
     setMessage('error', 'Tidak bisa edit: NIP/ID pegawai tidak ditemukan.')
     return
@@ -1508,6 +1522,7 @@ function startEdit(row) {
 
   isEditing.value = true
   editingNip.value = nip
+  editingId.value = id
   showPegawaiForm.value = true
 
   pegawaiForm.nama = row?.nama || row?.nama_pegawai || row?.NAMA_PEGAWAI || row?.nama_dosen || row?.user?.name || ''
@@ -1519,6 +1534,7 @@ function startEdit(row) {
 function cancelEdit() {
   isEditing.value = false
   editingNip.value = ''
+  editingId.value = ''
   resetPegawaiForm()
 }
 
@@ -1574,7 +1590,7 @@ async function updatePegawai() {
       }
 
   try {
-    const endpoint = isDosen ? ENDPOINTS.dosen.edit(nip) : ENDPOINTS.pegawai.edit(nip)
+    const endpoint = isDosen ? ENDPOINTS.dosen.edit(nip) : ENDPOINTS.pegawai.edit(editingId.value || nip)
     await api.put(endpoint, payload, { headers: { ...getAuthHeader() } })
 
     // update lokal biar langsung terlihat
@@ -1634,7 +1650,8 @@ async function hapusPegawai(row) {
   const isDosen = String(row?.jabatan || row?.role || '').toLowerCase() === 'dosen'
 
   try {
-    const endpoint = isDosen ? ENDPOINTS.dosen.hapus(nip) : ENDPOINTS.pegawai.hapus(nip)
+    const id = getPegawaiId(row)
+    const endpoint = isDosen ? ENDPOINTS.dosen.hapus(nip) : ENDPOINTS.pegawai.hapus(id || nip)
     await api.delete(endpoint, { headers: { ...getAuthHeader() } })
     pegawaiList.value = pegawaiList.value.filter((p) => getPegawaiNip(p) !== nip)
     pushLog(`Menghapus pegawai ${nama} (${nip})`, 'CRUD')

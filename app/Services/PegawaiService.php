@@ -27,14 +27,50 @@ class PegawaiService
 
     public function create($data)
     {
-        return Pegawai::create($data);
+        $pegawai = Pegawai::create($data);
+
+        // Cari ID Jabatan yang cocok berdasarkan unit_kerja
+        if (!empty($pegawai->unit_kerja)) {
+            $jabatan = \App\Models\Jabatan::where('nama_jabatan', 'like', '%' . $pegawai->unit_kerja . '%')
+                ->orWhere('id_jabatan', $pegawai->unit_kerja)
+                ->first();
+
+            if ($jabatan && !empty($pegawai->nip)) {
+                \App\Models\Memiliki::updateOrCreate([
+                    'nip' => $pegawai->nip,
+                    'id_jabatan' => $jabatan->id_jabatan
+                ]);
+            }
+        }
+
+        return $pegawai;
     }
 
     public function update($id, $data)
     {
         $pegawai = Pegawai::where('id_pegawai', $id)->firstOrFail();
+        $oldNip = $pegawai->nip;
 
         $pegawai->update($data);
+
+        // Jika unit_kerja diubah, update juga relasi di tabel memiliki
+        if (isset($data['unit_kerja'])) {
+            $jabatan = \App\Models\Jabatan::where('nama_jabatan', 'like', '%' . $pegawai->unit_kerja . '%')
+                ->orWhere('id_jabatan', $pegawai->unit_kerja)
+                ->first();
+
+            if ($jabatan && !empty($pegawai->nip)) {
+                // Hapus relasi memiliki yang lama
+                if (!empty($oldNip)) {
+                    \App\Models\Memiliki::where('nip', $oldNip)->delete();
+                }
+
+                \App\Models\Memiliki::updateOrCreate([
+                    'nip' => $pegawai->nip,
+                    'id_jabatan' => $jabatan->id_jabatan
+                ]);
+            }
+        }
 
         return $pegawai;
     }
@@ -42,6 +78,11 @@ class PegawaiService
     public function delete($id)
     {
         $pegawai = Pegawai::where('id_pegawai', $id)->firstOrFail();
+
+        // Bersihkan data pivot jika ada
+        if (!empty($pegawai->nip)) {
+            \App\Models\Memiliki::where('nip', $pegawai->nip)->delete();
+        }
 
         $pegawai->delete();
 
