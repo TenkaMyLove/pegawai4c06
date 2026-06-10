@@ -324,8 +324,8 @@
               <div v-for="row in riwayatPresensiGrouped.slice(0, 10)" :key="row._key" class="riwayat-item">
                 <div class="riwayat-item-head">
                   <strong class="riwayat-date">{{ row.label }}</strong>
-                  <span :class="['pill', row.lengkap ? 'ok' : 'danger']">
-                    {{ row.lengkap ? 'Lengkap' : '-' }}
+                  <span :class="['pill', row.lengkap ? 'ok' : (row.datang ? 'warn' : 'danger')]">
+                    {{ row.lengkap ? 'Lengkap' : (row.datang ? 'Belum Pulang' : '-') }}
                   </span>
                 </div>
 
@@ -776,15 +776,7 @@ const bolehPilihPulang = computed(() => {
 })
 
 const bisaSubmitPresensi = computed(() => {
-  if (!bolehPresensiHariIni.value) return false
-
-  // Jika sudah lengkap (datang & pulang), jangan izinkan submit lagi
-  if (presensiHariIniRow.value?.datang && presensiHariIniRow.value?.pulang) return false
-
-  // Pulang hanya valid jika sudah ada datang
-  if (fasePresensi.value === 'pulang' && !presensiHariIniRow.value?.datang) return false
-
-  return true
+  return Boolean(bolehPresensiHariIni.value)
 })
 
 
@@ -1060,11 +1052,13 @@ function normalizePegawai(item, index = 0) {
   const nip =
     item?.nip ||
     item?.NIP ||
+    item?.nip_baru ||
     item?.username ||
     item?.id_pegawai ||
     item?.ID_USER ||
     nested?.nip ||
     nested?.NIP ||
+    nested?.nip_baru ||
     nested?.username ||
     nested?.id_pegawai ||
     nested?.ID_USER ||
@@ -1388,46 +1382,26 @@ async function tambahPegawai() {
 
   loading.value = true
 
-  // Backend kolaborasi kalian ternyata meng-insert ke tabel `dosen` yang mewajibkan field `nama_dosen`.
-  // Jadi kita kirim field versi "Postman" + versi "dosen" sekaligus, biar kompatibel.
   const nama = String(pegawaiForm.nama).trim()
-  const panggilan = nama.split(' ')[0] || nama
 
-  const isDosen = String(pegawaiForm.jabatan).toLowerCase() === 'dosen'
+  const payload = {
+    // versi Model Pegawai (menggunakan lowercase sesuai schema fillable)
+    nip: pegawaiForm.nip,
+    nik: '6371012345678902', // Default dummy NIK
+    nama_pegawai: nama,
+    jenis_kelamin: 'L',
+    unit_kerja: pegawaiForm.jabatan,
+    status_aktif: 1,
 
-  const payload = isDosen
-    ? {
-        id_pegawai: 53, // Default fallback id_pegawai or dynamically resolved
-        id_user: 62,    // Default fallback id_user
-        nama_dosen: nama,
-        panggilan,
-        jk: 'L',
-        nidn: '0412089501',
-        nip_baru: pegawaiForm.nip,
-        email: pegawaiForm.email || `${panggilan.toLowerCase()}@email.com`,
-        alamat: 'Jl. Sultan Adam Permai No. 22, Banjarmasin',
-        id_jurusan: 1,
-        id_prodi: 2,
-        status_aktif: 1,
-      }
-    : {
-        // versi Model Pegawai (menggunakan lowercase sesuai schema fillable)
-        nip: pegawaiForm.nip,
-        nik: '6371012345678902', // Default dummy NIK
-        nama_pegawai: nama,
-        jenis_kelamin: 'L',
-        unit_kerja: pegawaiForm.jabatan,
-        status_aktif: 1,
-
-        // versi Postman (tetap dikirim untuk backwards compatibility jika ada)
-        NIP: pegawaiForm.nip,
-        NAMA_PEGAWAI: nama,
-        JENIS_KELAMIN: 'Laki-laki',
-        UNIT_KERJA: pegawaiForm.jabatan,
-      }
+    // versi Postman (tetap dikirim untuk backwards compatibility jika ada)
+    NIP: pegawaiForm.nip,
+    NAMA_PEGAWAI: nama,
+    JENIS_KELAMIN: 'Laki-laki',
+    UNIT_KERJA: pegawaiForm.jabatan,
+  }
 
   try {
-    const endpoint = isDosen ? ENDPOINTS.dosen.tambah : ENDPOINTS.pegawai.tambah
+    const endpoint = ENDPOINTS.pegawai.tambah
     const response = await api.post(endpoint, payload)
 
     // server kadang balikin {data:{...}} atau langsung object
@@ -1570,36 +1544,20 @@ async function updatePegawai() {
 
   loading.value = true
   const nama = String(pegawaiForm.nama).trim()
-  const panggilan = nama.split(' ')[0] || nama
   const nip = editingNip.value || pegawaiForm.nip
 
-  const isDosen = String(pegawaiForm.jabatan).toLowerCase() === 'dosen'
+  const payload = {
+    // versi Model Pegawai (menggunakan lowercase sesuai schema fillable)
+    nama_pegawai: nama,
+    unit_kerja: pegawaiForm.jabatan,
 
-  const payload = isDosen
-    ? {
-        nama_dosen: nama,
-        panggilan,
-        jk: 'L',
-        nidn: '0412089501',
-        nip_baru: nip,
-        email: pegawaiForm.email || `${panggilan.toLowerCase()}@email.com`,
-        alamat: 'Jl. Sultan Adam Permai No. 22, Banjarmasin',
-        id_jurusan: 1,
-        id_prodi: 2,
-        status_aktif: 1,
-      }
-    : {
-        // versi Model Pegawai (menggunakan lowercase sesuai schema fillable)
-        nama_pegawai: nama,
-        unit_kerja: pegawaiForm.jabatan,
-
-        // versi Postman (tetap dikirim untuk backwards compatibility jika ada)
-        NAMA_PEGAWAI: nama,
-        UNIT_KERJA: pegawaiForm.jabatan,
-      }
+    // versi Postman (tetap dikirim untuk backwards compatibility jika ada)
+    NAMA_PEGAWAI: nama,
+    UNIT_KERJA: pegawaiForm.jabatan,
+  }
 
   try {
-    const endpoint = isDosen ? ENDPOINTS.dosen.edit(nip) : ENDPOINTS.pegawai.edit(editingId.value || nip)
+    const endpoint = ENDPOINTS.pegawai.edit(editingId.value || nip)
     await api.put(endpoint, payload, { headers: { ...getAuthHeader() } })
 
     // update lokal biar langsung terlihat
@@ -1656,11 +1614,10 @@ async function hapusPegawai(row) {
   if (!ok) return
 
   loading.value = true
-  const isDosen = String(row?.jabatan || row?.role || '').toLowerCase() === 'dosen'
 
   try {
     const id = getPegawaiId(row)
-    const endpoint = isDosen ? ENDPOINTS.dosen.hapus(nip) : ENDPOINTS.pegawai.hapus(id || nip)
+    const endpoint = ENDPOINTS.pegawai.hapus(id || nip)
     await api.delete(endpoint, { headers: { ...getAuthHeader() } })
     pegawaiList.value = pegawaiList.value.filter((p) => getPegawaiNip(p) !== nip)
     pushLog(`Menghapus pegawai ${nama} (${nip})`, 'CRUD')
@@ -1688,6 +1645,24 @@ function resetPegawaiForm() {
 async function submitAbsensi() {
   if (!bolehPresensiHariIni.value) {
     setMessage('error', 'Presensi hanya tersedia Senin sampai Jumat.')
+    return
+  }
+
+  // Check if already checked in
+  if (fasePresensi.value === 'datang' && presensiHariIniRow.value?.datang) {
+    setMessage('info', 'Sudah presensi masuk hari ini')
+    return
+  }
+
+  // Check if already checked out
+  if (fasePresensi.value === 'pulang' && presensiHariIniRow.value?.pulang) {
+    setMessage('info', 'Sudah presensi keluar hari ini')
+    return
+  }
+
+  // Check if trying to check out before checking in
+  if (fasePresensi.value === 'pulang' && !presensiHariIniRow.value?.datang) {
+    setMessage('error', 'Anda harus melakukan presensi datang terlebih dahulu.')
     return
   }
 
@@ -1752,7 +1727,12 @@ async function submitAbsensi() {
 
     pushLog(`Admin melakukan ${labelFasePresensi.value}`, 'Presensi')
     setMessage('success', response?.data?.message || `${labelFasePresensi.value} berhasil disimpan.`)
-  } catch {
+  } catch (err) {
+    if (err?.response?.data?.message) {
+      setMessage('error', err.response.data.message)
+      return
+    }
+
     const presensiBaru = normalizePresensi({
       _key: `admin-local-${fasePresensi.value}-${todayKey.value}`,
       id_absensi: `LOCAL-${Date.now()}`,
@@ -2437,6 +2417,11 @@ td {
 .pill.ok {
   background: #dcfce7;
   color: #166534;
+}
+
+.pill.warn {
+  background: #fef9c3;
+  color: #854d0e;
 }
 
 .pill.danger {
