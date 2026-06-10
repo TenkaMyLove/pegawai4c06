@@ -1397,8 +1397,8 @@ async function tambahPegawai() {
   }
 
   try {
-    // Sesuai Postman: tambah data pegawai/dosen admin memakai POST /api/dosen.
-    const response = await api.post(ENDPOINTS.dosen.tambah, payload)
+    // Sesuai Postman: tambah data pegawai memakai POST /api/pegawai.
+    const response = await api.post(ENDPOINTS.pegawai.tambah, payload)
 
     // server kadang balikin {data:{...}} atau langsung object
     const raw = response?.data?.data || response?.data || {}
@@ -1541,7 +1541,7 @@ async function updatePegawai() {
   }
 
   try {
-    await api.put(ENDPOINTS.dosen.edit(nip), payload, { headers: { ...getAuthHeader() } })
+    await api.put(ENDPOINTS.pegawai.edit(nip), payload, { headers: { ...getAuthHeader() } })
 
     // update lokal biar langsung terlihat
     const next = pegawaiList.value.map((p) => {
@@ -1598,7 +1598,7 @@ async function hapusPegawai(row) {
 
   loading.value = true
   try {
-    await api.delete(ENDPOINTS.dosen.hapus(nip), { headers: { ...getAuthHeader() } })
+    await api.delete(ENDPOINTS.pegawai.hapus(nip), { headers: { ...getAuthHeader() } })
     pegawaiList.value = pegawaiList.value.filter((p) => getPegawaiNip(p) !== nip)
     pushLog(`Menghapus pegawai ${nama} (${nip})`, 'CRUD')
     setMessage('success', 'Pegawai berhasil dihapus.')
