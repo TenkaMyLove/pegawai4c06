@@ -183,6 +183,16 @@
                 <input type="text" :value="profile.nip || '-'" readonly />
               </div>
               <div class="field">
+                <label>NIK</label>
+                <input type="text" :value="profile.nik || '-'" readonly />
+              </div>
+
+              <div class="field">
+                <label>Jenis Kelamin</label>
+                <input type="text" :value="profile.jenis_kelamin === 'L' ? 'Laki-laki' : profile.jenis_kelamin === 'P' ? 'Perempuan' : (profile.jenis_kelamin || '-')" readonly />
+              </div>
+
+              <div class="field">
                 <label>Jabatan</label>
                 <input type="text" :value="jabatanText || '-'" readonly />
               </div>

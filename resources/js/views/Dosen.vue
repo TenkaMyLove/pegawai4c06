@@ -107,6 +107,19 @@
             </label>
 
             <label>
+              <span>NIK</span>
+              <input v-model="profileForm.nik" type="text" placeholder="NIK" />
+            </label>
+
+            <label>
+              <span>Jenis Kelamin</span>
+              <select v-model="profileForm.jenis_kelamin">
+                <option value="L">Laki-laki</option>
+                <option value="P">Perempuan</option>
+              </select>
+            </label>
+
+            <label>
               <span>Jabatan</span>
               <input v-model="profileForm.jabatan" type="text" placeholder="Jabatan" readonly />
             </label>
@@ -1007,6 +1020,8 @@ const profileForm = ref({
   nama: '',
   email: '',
   nip: '',
+  nik: '',
+  jenis_kelamin: 'L',
   jabatan: 'Dosen',
   alamat: '',
 })
@@ -3091,6 +3106,8 @@ function initProfileForm() {
     nama: clean.nama || '',
     email: clean.email || '',
     nip: clean.nip || '',
+    nik: clean.nik || clean.NIK || '',
+    jenis_kelamin: clean.jenis_kelamin || clean.JENIS_KELAMIN || 'L',
     jabatan: formatJabatan(clean.jabatan),
     alamat: clean.alamat || '',
   }
@@ -3113,7 +3130,7 @@ async function saveProfile() {
   try {
     await api.put(ENDPOINTS.pegawai.updateProfile, {
       alamat: profileForm.value.alamat || '',
-      jenis_kelamin: user.value.jk || user.value.jenis_kelamin || user.value.JENIS_KELAMIN || 'L',
+      jenis_kelamin: profileForm.value.jenis_kelamin || 'L',
     })
     setMessage('success', 'Profil berhasil diperbarui. Email dan alamat berhasil disimpan.')
   } catch {

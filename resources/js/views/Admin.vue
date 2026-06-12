@@ -501,13 +501,21 @@
             </label>
 
             <label>
+              <span>NIK</span>
+              <input v-model="profileForm.nik" type="text" placeholder="NIK" />
+            </label>
+
+            <label>
               <span>Jabatan</span>
               <input v-model="profileForm.jabatan" type="text" placeholder="Admin Pegawai" />
             </label>
 
             <label>
-              <span>Role</span>
-              <input v-model="profileForm.role" type="text" placeholder="admin" />
+              <span>Jenis Kelamin</span>
+              <select v-model="profileForm.jenis_kelamin">
+                <option value="L">Laki-laki</option>
+                <option value="P">Perempuan</option>
+              </select>
             </label>
 
             <label class="full">
@@ -616,9 +624,10 @@ const profileForm = reactive({
   nama: '',
   email: '',
   nip: '',
+  nik: '',
   jabatan: 'Admin Pegawai',
   role: 'admin',
-  no_hp: '',
+  jenis_kelamin: 'L',
   alamat: '',
 })
 
@@ -1797,9 +1806,10 @@ function initProfile() {
   profileForm.nama = user.value.nama || user.value.name || user.value.nama_pegawai || user.value.NAMA_PEGAWAI || 'Admin Pegawai'
   profileForm.email = user.value.email || user.value.EMAIL || 'adminpegawai@email.com'
   profileForm.nip = user.value.nip || user.value.NIP || user.value.username || 'ADMIN-001'
+  profileForm.nik = user.value.nik || user.value.NIK || ''
   profileForm.jabatan = normalizeJabatan(user.value.jabatan || user.value.role || 'Admin Pegawai')
   profileForm.role = user.value.role || user.value.tipe || 'admin'
-  profileForm.no_hp = user.value.no_hp || user.value.noHp || user.value.telepon || '-'
+  profileForm.jenis_kelamin = user.value.jenis_kelamin || user.value.JENIS_KELAMIN || 'L'
   profileForm.alamat = user.value.alamat || user.value.ALAMAT || '-'
 }
 
@@ -1838,8 +1848,8 @@ async function saveProfile() {
   try {
     // Sesuai Postman: PUT /api/pegawai/profile untuk update data profil akun login.
     await api.put(ENDPOINTS.pegawai.updateProfile, {
-      alamat: profileForm.alamat || user.value.alamat || user.value.ALAMAT || '',
-      jenis_kelamin: user.value.jenis_kelamin || user.value.JENIS_KELAMIN || 'L',
+      alamat: profileForm.alamat || '',
+      jenis_kelamin: profileForm.jenis_kelamin || 'L',
     })
     pushLog('Admin memperbarui profil melalui API', 'CRUD')
     setMessage('success', 'Profil berhasil diperbarui.')
