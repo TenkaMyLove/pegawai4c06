@@ -1237,6 +1237,20 @@ function getCleanProfile() {
       stored.username
     ),
     jabatan: formatJabatan(jabatanSource),
+    nik: pickFirst(
+      stored.nik,
+      stored.NIK,
+      pegawai.nik,
+      pegawai.NIK
+    ),
+    jenis_kelamin: pickFirst(
+      stored.jenis_kelamin,
+      stored.JENIS_KELAMIN,
+      stored.jk,
+      pegawai.jenis_kelamin,
+      pegawai.JENIS_KELAMIN,
+      dosen.jk
+    ),
     alamat: pickFirst(
       stored.alamat,
       stored.ALAMAT,
