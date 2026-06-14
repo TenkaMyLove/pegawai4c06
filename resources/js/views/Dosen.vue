@@ -1488,16 +1488,11 @@ const PESERTA_KELAS_MK_ENDPOINTS = [
 ]
 
 const PRESENSI_MAHASISWA_ROSTER_ENDPOINTS = [
-  'https://api-admin-4c.rifkiaja.my.id:9002/api/akademik/presensi-mahasiswa',
-  'https://api-admin-4c.rifkiaja.my.id:9002/api/presensi-mahasiswa/roster',
-  '/api/absensi/roster',
+  'https://api-admin-4c.rifkiaja.my.id:9002/api/akademik/presensi-mahasiswa/roster',
 ]
 
 const BATCH_ROLL_CALL_ENDPOINTS = [
   'https://api-admin-4c.rifkiaja.my.id:9002/api/akademik/presensi-mahasiswa/batch-roll-call',
-  'https://api-admin-4c.rifkiaja.my.id:9002/api/akademik/presensi-mahasiswa/batch-store',
-  'https://api-admin-4c.rifkiaja.my.id:9002/api/presensi-mahasiswa/batch-roll-call',
-  '/api/absensi/manual',
 ]
 
 const GENERATE_SESSION_ENDPOINTS = [
@@ -2103,6 +2098,7 @@ async function fetchRoster(kelas) {
       if (Array.isArray(rosterData)) {
         kelas.peserta = rosterData.map((m, idx) => ({
           _key: String(m.nim || m.id_kelas_master || idx),
+          id: m.id || m.ID || m.id_presensi || m.id_presensi_mahasiswa || m.id_absensi || m.ID_PRESENSI || '',
           id_kelas_master: m.id_kelas_master,
           nim: m.nim,
           nama: m.nama_mahasiswa || `Mahasiswa ${m.nim}`,
@@ -2251,11 +2247,37 @@ function setStatusPresensiManual(kelas, peserta, status) {
     const itemKey = item._key || String(item.nim || item.NIM || item.id || item.nama || idx).trim()
 
     if (String(itemKey) === String(pesertaKey)) {
-      return normalizePeserta({
+      const updated = normalizePeserta({
         ...item,
         manual_status: status,
         status_manual: status,
       }, idx)
+
+      // Trigger instant individual update via batch-roll-call POST since no unique record ID is provided by roster GET
+      const idKelasMk = Number(getApiIdKelas(kelas))
+      if (idKelasMk && item.nim) {
+        const payload = {
+          presensi: [
+            {
+              id_kelas_master: item.id_kelas_master || 1,
+              nim: String(item.nim || '').trim(),
+              id_kelas_mk: idKelasMk,
+              pertemuan_ke: Number(pertemuanKe.value),
+              status_presensi: status,
+            }
+          ]
+        }
+        const endpoint = BATCH_ROLL_CALL_ENDPOINTS[0] || 'https://api-admin-4c.rifkiaja.my.id:9002/api/akademik/presensi-mahasiswa/batch-roll-call'
+        api.post(endpoint, payload)
+          .then(() => {
+            console.log(`Successfully updated attendance for student ${item.nim} to ${status}`)
+          })
+          .catch((err) => {
+            console.error("Gagal melakukan update presensi mahasiswa:", err)
+          })
+      }
+
+      return updated
     }
 
     return normalizePeserta(item, idx)
