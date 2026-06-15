@@ -89,6 +89,14 @@ class AuthController extends Controller
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
+        app(\App\Services\AdminActivityLogService::class)->log(
+            $user->id,
+            'LOGIN',
+            'users',
+            $user->id,
+            "User {$user->name} berhasil login"
+        );
+
         return response()->json([
             'token' => $token,
             'user' => $user,
@@ -101,12 +109,23 @@ class AuthController extends Controller
             ],
         ]);
     }
-    public function logout(Request $request)
-{
-    $request->user()->currentAccessToken()->delete();
 
-    return response()->json([
-        'message' => 'Logout berhasil'
-    ]);
-}
+    public function logout(Request $request)
+    {
+        $user = $request->user();
+        if ($user) {
+            app(\App\Services\AdminActivityLogService::class)->log(
+                $user->id,
+                'LOGOUT',
+                'users',
+                $user->id,
+                "User {$user->name} logout"
+            );
+        }
+        $request->user()->currentAccessToken()->delete();
+
+        return response()->json([
+            'message' => 'Logout berhasil'
+        ]);
+    }
 }

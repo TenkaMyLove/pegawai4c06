@@ -43,6 +43,14 @@ class PegawaiService
             }
         }
 
+        app(\App\Services\AdminActivityLogService::class)->log(
+            auth()->id(),
+            'CREATE',
+            'pegawai',
+            $pegawai->id_pegawai,
+            "Menambahkan pegawai baru: {$pegawai->nama_pegawai} (NIP: {$pegawai->nip})"
+        );
+
         return $pegawai;
     }
 
@@ -72,6 +80,14 @@ class PegawaiService
             }
         }
 
+        app(\App\Services\AdminActivityLogService::class)->log(
+            auth()->id(),
+            'UPDATE',
+            'pegawai',
+            $pegawai->id_pegawai,
+            "Memperbarui pegawai: {$pegawai->nama_pegawai} (NIP: {$pegawai->nip})"
+        );
+
         return $pegawai;
     }
 
@@ -85,6 +101,14 @@ class PegawaiService
         }
 
         $pegawai->delete();
+
+        app(\App\Services\AdminActivityLogService::class)->log(
+            auth()->id(),
+            'DELETE',
+            'pegawai',
+            $pegawai->id_pegawai,
+            "Menghapus pegawai: {$pegawai->nama_pegawai} (NIP: {$pegawai->nip})"
+        );
 
         return ['message' => 'Deleted'];
     }

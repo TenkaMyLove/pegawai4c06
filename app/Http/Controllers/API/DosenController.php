@@ -26,6 +26,14 @@ class DosenController extends Controller
     {
         $dosen = Dosen::create($request->all());
 
+        app(\App\Services\AdminActivityLogService::class)->log(
+            auth()->id(),
+            'CREATE',
+            'dosen',
+            $dosen->id_dosen,
+            "Menambahkan dosen baru: {$dosen->nama_dosen}"
+        );
+
         return response()->json($dosen, 201);
     }
 
@@ -35,6 +43,14 @@ class DosenController extends Controller
 
         $dosen->update($request->all());
 
+        app(\App\Services\AdminActivityLogService::class)->log(
+            auth()->id(),
+            'UPDATE',
+            'dosen',
+            $dosen->id_dosen,
+            "Memperbarui dosen: {$dosen->nama_dosen}"
+        );
+
         return response()->json($dosen);
     }
 
@@ -43,6 +59,14 @@ class DosenController extends Controller
         $dosen = Dosen::findOrFail($id);
 
         $dosen->delete();
+
+        app(\App\Services\AdminActivityLogService::class)->log(
+            auth()->id(),
+            'DELETE',
+            'dosen',
+            $dosen->id_dosen,
+            "Menghapus dosen: {$dosen->nama_dosen}"
+        );
 
         return response()->json([
             'message' => 'Dosen deleted'
