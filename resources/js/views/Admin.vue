@@ -649,19 +649,36 @@ const pegawaiForm = reactive({
 
 const jabatanOptions = computed(() => {
   const set = new Set([
-    'Admin Pegawai',
     'Staff Akademik',
     'Dosen',
   ])
 
   pegawaiList.value.forEach((p) => {
     const val = p?.jabatan || p?.role
-    if (val && String(val).trim() !== 'pegawai') set.add(String(val).trim())
+    if (val && String(val).trim() !== 'pegawai') {
+      const trimmed = String(val).trim()
+      const lower = trimmed.toLowerCase()
+      if (lower !== 'admin kepegawaian' && lower !== 'admin pegawai') {
+        set.add(trimmed)
+      }
+    }
   })
 
   // Pastikan jabatan yang sedang diedit tetap muncul di dropdown.
   if (pegawaiForm.jabatan && String(pegawaiForm.jabatan).trim() !== 'pegawai') {
-    set.add(String(pegawaiForm.jabatan).trim())
+    const trimmed = String(pegawaiForm.jabatan).trim()
+    const lower = trimmed.toLowerCase()
+    if (lower !== 'admin kepegawaian' && lower !== 'admin pegawai') {
+      set.add(trimmed)
+    }
+  }
+
+  // Double check and remove any case-insensitive match of 'Admin Kepegawaian' or 'Admin Pegawai'
+  for (const item of set) {
+    const lower = item.toLowerCase()
+    if (lower === 'admin kepegawaian' || lower === 'admin pegawai') {
+      set.delete(item)
+    }
   }
 
   return Array.from(set)
@@ -1149,13 +1166,13 @@ function normalizePegawai(item, index = 0) {
     item?.nip ||
     item?.NIP ||
     item?.nip_baru ||
-    item?.username ||
-    item?.id_pegawai ||
-    item?.ID_USER ||
     nested?.nip ||
     nested?.NIP ||
     nested?.nip_baru ||
+    item?.username ||
     nested?.username ||
+    item?.id_pegawai ||
+    item?.ID_USER ||
     nested?.id_pegawai ||
     nested?.ID_USER ||
     ''
