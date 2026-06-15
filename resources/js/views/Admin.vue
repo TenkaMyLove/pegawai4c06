@@ -159,6 +159,11 @@
               placeholder="Cari nama, NIP, email..."
             />
 
+            <select v-model="jabatanFilter" class="jabatan-filter-select">
+              <option value="">Semua Jabatan</option>
+              <option v-for="jab in jabatanOptions" :key="jab" :value="jab">{{ jab }}</option>
+            </select>
+
             <button class="primary-btn" type="button" @click="showPegawaiForm = !showPegawaiForm">
               {{ showPegawaiForm ? 'Tutup Form' : '+ Tambah Pegawai' }}
             </button>
@@ -255,7 +260,7 @@
 
             <tbody>
               <tr v-for="(pegawai, index) in filteredPegawai" :key="pegawai._key">
-                <td>{{ index + 1 }}</td>
+                <td>{{ (currentPage - 1) * perPage + index + 1 }}</td>
                 <td>
                   <div class="table-user">
                     <span>{{ initial(pegawai.nama) }}</span>
@@ -278,6 +283,48 @@
           <p v-if="filteredPegawai.length === 0" class="empty table-empty">
             Data pegawai tidak ditemukan.
           </p>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination-bar" v-if="totalPages > 1 || allFilteredPegawai.length > 0">
+          <div class="pagination-controls">
+            <button
+              class="page-btn"
+              type="button"
+              :disabled="currentPage === 1"
+              @click="currentPage = 1"
+            >«</button>
+            <button
+              class="page-btn"
+              type="button"
+              :disabled="currentPage === 1"
+              @click="currentPage--"
+            >‹</button>
+            <template v-for="p in totalPages" :key="p">
+              <button
+                v-if="Math.abs(p - currentPage) <= 2 || p === 1 || p === totalPages"
+                :class="['page-btn', p === currentPage && 'active']"
+                type="button"
+                @click="currentPage = p"
+              >{{ p }}</button>
+              <span
+                v-else-if="Math.abs(p - currentPage) === 3"
+                class="page-ellipsis"
+              >…</span>
+            </template>
+            <button
+              class="page-btn"
+              type="button"
+              :disabled="currentPage === totalPages"
+              @click="currentPage++"
+            >›</button>
+            <button
+              class="page-btn"
+              type="button"
+              :disabled="currentPage === totalPages"
+              @click="currentPage = totalPages"
+            >»</button>
+          </div>
         </div>
       </section>
 
@@ -557,6 +604,9 @@ const props = defineProps({
 const router = useRouter()
 const loading = ref(false)
 const search = ref('')
+const jabatanFilter = ref('')
+const currentPage = ref(1)
+const perPage = 25
 const message = ref({ type: '', text: '' })
 const showPegawaiForm = ref(false)
 const isEditing = ref(false)
@@ -601,18 +651,18 @@ const jabatanOptions = computed(() => {
   const set = new Set([
     'Admin Pegawai',
     'Staff Akademik',
-    'Tendik',
     'Dosen',
-    'Pegawai',
   ])
 
   pegawaiList.value.forEach((p) => {
     const val = p?.jabatan || p?.role
-    if (val) set.add(String(val).trim())
+    if (val && String(val).trim() !== 'pegawai') set.add(String(val).trim())
   })
 
   // Pastikan jabatan yang sedang diedit tetap muncul di dropdown.
-  if (pegawaiForm.jabatan) set.add(String(pegawaiForm.jabatan).trim())
+  if (pegawaiForm.jabatan && String(pegawaiForm.jabatan).trim() !== 'pegawai') {
+    set.add(String(pegawaiForm.jabatan).trim())
+  }
 
   return Array.from(set)
     .filter(Boolean)
@@ -653,18 +703,34 @@ const userName = computed(() => (
 
 const userInitial = computed(() => initial(userName.value))
 
-const filteredPegawai = computed(() => {
+const allFilteredPegawai = computed(() => {
   const keyword = search.value.trim().toLowerCase()
-  if (!keyword) return pegawaiList.value
+  const jabatan = jabatanFilter.value
 
   return pegawaiList.value.filter((pegawai) => {
-    return [pegawai.nama, pegawai.nip, pegawai.email, pegawai.role, pegawai.jabatan]
-      .filter(Boolean)
-      .join(' ')
-      .toLowerCase()
-      .includes(keyword)
+    const matchKeyword = keyword
+      ? [pegawai.nama, pegawai.nip, pegawai.email, pegawai.role, pegawai.jabatan]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase()
+          .includes(keyword)
+      : true
+
+    const pegawaiJabatan = pegawai.jabatan || pegawai.role || 'Pegawai'
+    const matchJabatan = jabatan ? pegawaiJabatan === jabatan : true
+
+    return matchKeyword && matchJabatan
   })
 })
+
+const totalPages = computed(() => Math.ceil(allFilteredPegawai.value.length / perPage))
+
+const filteredPegawai = computed(() => {
+  const start = (currentPage.value - 1) * perPage
+  return allFilteredPegawai.value.slice(start, start + perPage)
+})
+
+watch([search, jabatanFilter], () => { currentPage.value = 1 })
 
 const totalJabatan = computed(() => {
   return new Set(
@@ -3107,6 +3173,79 @@ textarea {
   cursor:pointer;
 }
 .mini-btn:hover{ background: rgba(2,132,199,.06); }
+
+/* Jabatan filter select */
+.jabatan-filter-select {
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid #d8e2ef;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+  background: #ffffff;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
+  min-width: 160px;
+}
+.jabatan-filter-select:focus {
+  border-color: #1d5fa8;
+  box-shadow: 0 0 0 3px rgba(29, 95, 168, 0.1);
+}
+
+/* Pagination */
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px 4px 4px;
+}
+.pagination-info {
+  font-size: 13px;
+  font-weight: 700;
+  color: #64748b;
+}
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.page-btn {
+  min-width: 34px;
+  height: 34px;
+  padding: 0 8px;
+  border: 1px solid #dbe4f0;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: 0.15s ease;
+}
+.page-btn:hover:not(:disabled) {
+  border-color: #1d5fa8;
+  background: #f4f9ff;
+  color: #1d5fa8;
+}
+.page-btn.active {
+  background: #15579d;
+  border-color: #15579d;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(21, 87, 157, 0.25);
+}
+.page-btn:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+.page-ellipsis {
+  font-size: 14px;
+  color: #94a3b8;
+  padding: 0 4px;
+}
 .mini-btn.danger{ border-color: rgba(239,68,68,.35); }
 .mini-btn.danger:hover{ background: rgba(239,68,68,.08); }
 .danger-btn{
@@ -3397,5 +3536,3 @@ textarea {
   }
 }
 </style>
-
-

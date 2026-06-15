@@ -85,9 +85,38 @@
           <button class="login-button" type="submit" :disabled="loading">
             {{ loading ? 'Memproses...' : 'Masuk' }}
           </button>
+
+          <div class="login-links">
+            <button type="button" class="link-btn" @click="showAdminPopup('lupa-password')">
+              Lupa Password?
+            </button>
+            <span class="link-divider">·</span>
+            <button type="button" class="link-btn" @click="showAdminPopup('buat-akun')">
+              Buat Akun
+            </button>
+          </div>
         </form>
       </div>
     </section>
+
+    <!-- Admin-only popup -->
+    <Transition name="popup-fade">
+      <div v-if="popupVisible" class="popup-overlay" @click.self="popupVisible = false">
+        <div class="popup-box">
+          <div class="popup-icon">🔒</div>
+          <h3 class="popup-title">
+            {{ popupType === 'lupa-password' ? 'Lupa Password' : 'Buat Akun' }}
+          </h3>
+          <p class="popup-msg">
+            Untuk keamanan data, hanya <strong>Admin</strong> yang dapat
+            {{ popupType === 'lupa-password' ? 'mereset atau mengganti password akun.' : 'membuat atau mendaftarkan akun baru.' }}
+            <br /><br />
+            Silakan hubungi Admin sistem Simpadu Poliban untuk bantuan lebih lanjut.
+          </p>
+          <button class="popup-close-btn" @click="popupVisible = false">Mengerti</button>
+        </div>
+      </div>
+    </Transition>
   </main>
 </template>
 
@@ -105,6 +134,13 @@ const password = ref('')
 const showPassword = ref(false)
 const error = ref('')
 const loading = ref(false)
+const popupVisible = ref(false)
+const popupType = ref('')
+
+function showAdminPopup(type) {
+  popupType.value = type
+  popupVisible.value = true
+}
 
 /**
  * Opsi login hanya 2:
@@ -740,6 +776,113 @@ async function handleLogin() {
   transform: none;
 }
 
+.login-links {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: #1d5fa8;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.2s;
+}
+
+.link-btn:hover {
+  color: #063f7c;
+  text-decoration: underline;
+}
+
+.link-divider {
+  color: #94a3b8;
+  font-size: 14px;
+  user-select: none;
+}
+
+/* Popup overlay */
+.popup-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(6, 21, 43, 0.55);
+  backdrop-filter: blur(4px);
+  display: grid;
+  place-items: center;
+  z-index: 9999;
+  padding: 20px;
+}
+
+.popup-box {
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 40px 36px 34px;
+  max-width: 400px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 32px 72px rgba(6, 21, 43, 0.22);
+}
+
+.popup-icon {
+  font-size: 42px;
+  margin-bottom: 14px;
+}
+
+.popup-title {
+  margin: 0 0 14px;
+  color: #06152b;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: -0.5px;
+}
+
+.popup-msg {
+  color: #475569;
+  font-size: 15px;
+  line-height: 1.65;
+  margin: 0 0 28px;
+}
+
+.popup-msg strong {
+  color: #0b55a0;
+}
+
+.popup-close-btn {
+  width: 100%;
+  height: 50px;
+  border: none;
+  border-radius: 14px;
+  background: #15579d;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+  box-shadow: 0 10px 24px rgba(21, 87, 157, 0.2);
+}
+
+.popup-close-btn:hover {
+  background: #0f4a88;
+  transform: translateY(-1px);
+}
+
+/* Popup transition */
+.popup-fade-enter-active,
+.popup-fade-leave-active {
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.popup-fade-enter-from,
+.popup-fade-leave-to {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
 @media (max-width: 920px) {
   .login-shell {
     grid-template-columns: 1fr;
@@ -784,5 +927,3 @@ async function handleLogin() {
   }
 }
 </style>
-
-
