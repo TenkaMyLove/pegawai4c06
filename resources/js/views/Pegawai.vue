@@ -117,7 +117,7 @@
               class="btn-presensi"
               type="button"
               @click="catatPresensi"
-              :disabled="loading || !isWeekday || presensiHariIni.lengkap || (modePresensi === 'pulang' && !presensiHariIni.jam_datang)"
+              :disabled="loading || presensiHariIni.lengkap || (modePresensi === 'pulang' && !presensiHariIni.jam_datang)"
             >
               <span v-if="loading">Memuat...</span>
               <span v-else>{{ tombolText }}</span>
@@ -358,18 +358,41 @@ function normalizeProfile(p) {
 }
 
 
+// Convert an ISO/UTC timestamp string to local WIB time displayed as HH:MM:SS.
+// If the value looks like a plain time (HH:MM or HH:MM:SS) it is returned as-is.
+function formatJam(raw) {
+  if (!raw) return ''
+  const s = String(raw).trim()
+  // Already a plain time (e.g. "09:15:57" from old records)
+  if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(s)) return s
+  // ISO timestamp – parse and convert to local time
+  const d = new Date(s)
+  if (isNaN(d.getTime())) return s // not a valid date – return raw
+  return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
+}
+
 function normalizePresensi(p) {
   const obj = p?.data ?? p ?? {}
-  const tanggal = obj.tanggal ?? obj.date ?? obj.created_at ?? obj.waktu ?? obj.tgl ?? ''
-  const jam_datang = obj.jam_datang ?? obj.waktu_datang ?? obj.waktu_masuk ?? obj.masuk ?? obj.check_in ?? ''
-  const jam_pulang = obj.jam_pulang ?? obj.waktu_pulang ?? obj.waktu_keluar ?? obj.pulang ?? obj.check_out ?? ''
+  // Support both camelCase and UPPERCASE field names returned by the presensi API
+  const tanggal =
+    obj.TANGGAL ?? obj.tanggal ?? obj.date ??
+    (obj.WAKTU_MASUK ? String(obj.WAKTU_MASUK).slice(0, 10) : '') ??
+    obj.created_at ?? obj.waktu ?? obj.tgl ?? ''
+  const rawMasuk =
+    obj.WAKTU_MASUK ?? obj.jam_datang ?? obj.waktu_datang ??
+    obj.waktu_masuk ?? obj.masuk ?? obj.check_in ?? ''
+  const rawKeluar =
+    obj.WAKTU_KELUAR ?? obj.jam_pulang ?? obj.waktu_pulang ??
+    obj.waktu_keluar ?? obj.pulang ?? obj.check_out ?? ''
+  const jam_datang = formatJam(rawMasuk)
+  const jam_pulang = formatJam(rawKeluar)
   return {
-    _key: obj.id ?? obj._key ?? `${tanggal}-${jam_datang}-${jam_pulang}-${Math.random()}`,
+    _key: obj.ID_PRESENSI ?? obj.id ?? obj._key ?? `${tanggal}-${rawMasuk}-${rawKeluar}-${Math.random()}`,
     tanggal,
     jam_datang,
     jam_pulang,
-    status: obj.status ?? '',
-    pegawai_id: obj.pegawai_id ?? obj.id_pegawai ?? obj.user_id ?? obj.nip ?? obj.NIP ?? '',
+    status: obj.STATUS_PRESENSI ?? obj.status ?? '',
+    pegawai_id: obj.ID_PEGAWAI ?? obj.pegawai_id ?? obj.id_pegawai ?? obj.user_id ?? obj.nip ?? obj.NIP ?? '',
     email: obj.email ?? '',
   }
 }
@@ -551,13 +574,33 @@ const riwayatPerHari = computed(() => {
 // dipendekkan
 const riwayatRingkas = computed(() => riwayatPerHari.value.slice(0, 3))
 
+// Backup endpoints (akufarish) digunakan jika primary (rifkiaja) gagal
+const BACKUP_MASUK  = 'https://api-pegawai-4c.akufarish.my.id:9001/pegawai/absensi/masuk'
+const BACKUP_KELUAR = 'https://api-pegawai-4c.akufarish.my.id:9001/pegawai/absensi/keluar'
+
 async function catatPresensi() {
   if (presensiHariIni.value.lengkap) return
 
   loading.value = true
+  const isPulang   = modePresensi.value === 'pulang'
+  const primary    = isPulang ? ENDPOINTS.absensi.pegawaiKeluar : ENDPOINTS.absensi.pegawaiMasuk
+  const backup     = isPulang ? BACKUP_KELUAR : BACKUP_MASUK
+
+  // Dapatkan token lokal dari localStorage untuk authentikasi fallback
+  const localToken = localStorage.getItem('simpadu_token')
+  const headers = {}
+  if (localToken) {
+    headers['Authorization'] = `Bearer ${localToken}`
+  }
+
   try {
-    const endpoint = modePresensi.value === 'pulang' ? ENDPOINTS.absensi.pegawaiKeluar : ENDPOINTS.absensi.pegawaiMasuk
-    await apiRequest(endpoint, { method: 'POST' })
+    try {
+      await api.post(primary, {}, { headers })
+    } catch (primaryErr) {
+      // Primary failed – try backup silently
+      console.warn('[presensi] primary endpoint failed, trying backup…', primaryErr?.message)
+      await api.post(backup, {}, { headers })
+    }
 
     await ambilRiwayatPresensi()
     setMessage('success', 'Presensi tersimpan')
@@ -634,8 +677,8 @@ onBeforeUnmount(() => {
 .mini-value{margin-top:4px;font-size:14px;font-weight:900;color:#0b1f35}
 
 .mode{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
-.mode-btn{border:1px solid #e5eaf3;background:#fff;border-radius:12px;padding:10px 12px;font-weight:900;cursor:pointer}
-.mode-btn.active{border-color:#b9d6ff;box-shadow:0 10px 20px rgba(11,78,162,.10)}
+.mode-btn{border:1px solid #e5eaf3;background:#fff;border-radius:12px;padding:10px 12px;font-weight:900;cursor:pointer;transition:all 0.2s ease}
+.mode-btn.active{background:#0b4ea2;color:#fff;border-color:#0b4ea2;box-shadow:0 6px 14px rgba(11,78,162,.25)}
 .mode-btn:disabled{opacity:.6;cursor:not-allowed}
 
 .jam-box{border:1px solid #eef2f7;border-radius:14px;padding:12px;background:#fff;margin-bottom:14px}

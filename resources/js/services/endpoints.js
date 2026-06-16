@@ -71,19 +71,19 @@ const ENDPOINTS = {
     pegawaiMasuk: 'https://api-admin-4c.rifkiaja.my.id:9002/api/presensi-pegawai/masuk',
     pegawaiKeluar: 'https://api-admin-4c.rifkiaja.my.id:9002/api/presensi-pegawai/keluar',
     pegawaiHariIni: 'https://api-admin-4c.rifkiaja.my.id:9002/api/presensi-pegawai/hari-ini',
-    pegawaiRekap: '/api/pegawai/absensi/rekap',
+    pegawaiRekap: 'https://api-admin-4c.rifkiaja.my.id:9002/api/presensi-pegawai/rekap',
 
     // Alias untuk halaman dosen
     dosenMasuk: 'https://api-admin-4c.rifkiaja.my.id:9002/api/presensi-pegawai/masuk',
     dosenPulang: 'https://api-admin-4c.rifkiaja.my.id:9002/api/presensi-pegawai/keluar',
     dosenHariIni: 'https://api-admin-4c.rifkiaja.my.id:9002/api/presensi-pegawai/hari-ini',
-    rekapDosen: '/api/pegawai/absensi/rekap',
+    rekapDosen: 'https://api-admin-4c.rifkiaja.my.id:9002/api/presensi-pegawai/rekap',
   },
     // https://api-admin-4c.rifkiaja.my.id:9002/api/presensi-pegawai/rekap
   rekapPresensi: {
     semua: '/api/absensi/rekap',
-    pegawai: '/api/pegawai/absensi/rekap',
-    dosen: '/api/pegawai/absensi/rekap',
+    pegawai: 'https://api-admin-4c.rifkiaja.my.id:9002/api/presensi-pegawai/rekap',
+    dosen: 'https://api-admin-4c.rifkiaja.my.id:9002/api/presensi-pegawai/rekap',
   },
 }
 

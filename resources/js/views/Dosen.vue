@@ -724,23 +724,11 @@
             <button
               class="save-presensi"
               type="button"
-              :disabled="loading || !isWeekday || (modePresensi === 'pulang' && (!presensiHariIni || !presensiHariIni.waktu_masuk))"
+              :disabled="loading || (modePresensi === 'pulang' && (!presensiHariIni || !presensiHariIni.waktu_masuk))"
               @click="simpanPresensiDosen"
             >
-              {{
-                loading
-                  ? 'Menyimpan...'
-                  : !isWeekday
-                    ? 'Presensi'
-                    : modePresensi === 'masuk'
-                      ? '✅ Presensi Datang'
-                      : '✅ Presensi Pulang'
-              }}
+              {{ loading ? 'Menyimpan...' : (modePresensi === 'masuk' ? '✅ Presensi Datang' : '✅ Presensi Pulang') }}
             </button>
-
-            <p v-if="!isWeekday" class="hint">
-              Presensi hanya bisa dilakukan pada hari kerja
-            </p>
           </div>
 
           <div class="white-card history-card modern-history-card">
@@ -1748,21 +1736,40 @@ function normalizeKelas(item) {
   }
 }
 
+// Convert an ISO/UTC timestamp string to local WIB time displayed as HH:MM:SS.
+// If the value looks like a plain time (HH:MM or HH:MM:SS) it is returned as-is.
+function formatJam(raw) {
+  if (!raw) return ''
+  const s = String(raw).trim()
+  if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(s)) return s
+  const d = new Date(s)
+  if (isNaN(d.getTime())) return s
+  return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
+}
+
 function normalizePresensi(item, index = 0) {
+  // Support both camelCase and UPPERCASE field names returned by the presensi API
+  const rawMasuk  = item.WAKTU_MASUK  ?? item.waktu_masuk  ?? item.jam_masuk  ?? item.masuk  ?? ''
+  const rawKeluar = item.WAKTU_KELUAR ?? item.waktu_keluar ?? item.jam_keluar ?? item.keluar ?? ''
+  const tanggal   =
+    item.TANGGAL ?? item.tanggal ?? item.created_at ??
+    (rawMasuk ? String(rawMasuk).slice(0, 10) : '') ??
+    new Date().toLocaleDateString('id-ID')
   return {
     ...item,
     _key:
       item._key ||
+      item.ID_PRESENSI ||
       item.id ||
-      `${item.kelas_id || item.id_kelas || 'kelas'}-${item.created_at || item.tanggal || index}-${item.status || ''}`,
-    tanggal: item.tanggal || item.created_at || new Date().toLocaleDateString('id-ID'),
+      `${item.kelas_id || item.id_kelas || 'kelas'}-${item.created_at || tanggal || index}-${item.status || ''}`,
+    tanggal,
     created_at: item.created_at || new Date().toLocaleString('id-ID'),
     kelas_id: item.kelas_id || item.id_kelas || '',
     nama_kelas: item.nama_kelas || item.mata_kuliah || item.kelas || '',
-    status: item.status || '',
+    status: item.STATUS_PRESENSI || item.status || '',
     keterangan: item.keterangan || item.catatan || '',
-    waktu_masuk: item.waktu_masuk || item.jam_masuk || item.masuk || '',
-    waktu_keluar: item.waktu_keluar || item.jam_keluar || item.keluar || '',
+    waktu_masuk:  formatJam(rawMasuk),
+    waktu_keluar: formatJam(rawKeluar),
   }
 }
 
@@ -2501,9 +2508,9 @@ async function ambilPresensiHariIni(tampilkanPesan = false) {
     presensiHariIni.value = data
       ? {
           ...data,
-          tanggal: data.tanggal || data.created_at || new Date().toLocaleDateString('id-ID'),
-          waktu_masuk: data.waktu_masuk || data.jam_masuk || data.masuk || null,
-          waktu_keluar: data.waktu_keluar || data.jam_keluar || data.keluar || null,
+          tanggal: data.TANGGAL || data.tanggal || data.created_at || new Date().toLocaleDateString('id-ID'),
+          waktu_masuk:  formatJam(data.WAKTU_MASUK  || data.waktu_masuk  || data.jam_masuk  || null),
+          waktu_keluar: formatJam(data.WAKTU_KELUAR || data.waktu_keluar || data.jam_keluar || null),
         }
       : null
   } catch (e) {
@@ -2760,12 +2767,30 @@ async function simpanPresensiDosen() {
 
   const isPulang = modePresensi.value === 'pulang'
 
-  try {
-    const endpoint = isPulang
-      ? (ENDPOINTS?.absensi?.dosenPulang || ENDPOINTS?.absensi?.pegawaiKeluar || '/api/pegawai/absensi/keluar')
-      : (ENDPOINTS?.absensi?.dosenMasuk || ENDPOINTS?.absensi?.pegawaiMasuk || '/api/pegawai/absensi/masuk')
+  // Backup endpoints (akufarish) jika primary (rifkiaja) gagal
+  const BACKUP_MASUK  = 'https://api-pegawai-4c.akufarish.my.id:9001/pegawai/absensi/masuk'
+  const BACKUP_KELUAR = 'https://api-pegawai-4c.akufarish.my.id:9001/pegawai/absensi/keluar'
 
-    const response = await api.post(endpoint)
+  // Dapatkan token lokal dari localStorage untuk authentikasi fallback
+  const localToken = localStorage.getItem('simpadu_token')
+  const headers = {}
+  if (localToken) {
+    headers['Authorization'] = `Bearer ${localToken}`
+  }
+
+  try {
+    const primaryEndpoint = isPulang
+      ? (ENDPOINTS?.absensi?.dosenPulang || ENDPOINTS?.absensi?.pegawaiKeluar || '/api/pegawai/absensi/keluar')
+      : (ENDPOINTS?.absensi?.dosenMasuk  || ENDPOINTS?.absensi?.pegawaiMasuk  || '/api/pegawai/absensi/masuk')
+    const backupEndpoint = isPulang ? BACKUP_KELUAR : BACKUP_MASUK
+
+    let response
+    try {
+      response = await api.post(primaryEndpoint, {}, { headers })
+    } catch (primaryErr) {
+      console.warn('[presensi] primary endpoint failed, trying backup…', primaryErr?.message)
+      response = await api.post(backupEndpoint, {}, { headers })
+    }
 
     const data = response?.data?.data || {}
 
@@ -2773,9 +2798,9 @@ async function simpanPresensiDosen() {
     presensiHariIni.value = {
       ...(presensiHariIni.value || {}),
       ...data,
-      tanggal: data.tanggal || presensiHariIni.value?.tanggal || hariIni,
-      waktu_masuk: data.waktu_masuk || presensiHariIni.value?.waktu_masuk || null,
-      waktu_keluar: data.waktu_keluar || presensiHariIni.value?.waktu_keluar || null,
+      tanggal:      data.TANGGAL      || data.tanggal      || presensiHariIni.value?.tanggal      || hariIni,
+      waktu_masuk:  formatJam(data.WAKTU_MASUK  || data.waktu_masuk  || presensiHariIni.value?.waktu_masuk  || null),
+      waktu_keluar: formatJam(data.WAKTU_KELUAR || data.waktu_keluar || presensiHariIni.value?.waktu_keluar || null),
     }
 
     const presensiBaru = normalizePresensi({
@@ -6633,10 +6658,13 @@ const logoUrl = '/assets/images/logo-poliban.png' dan semua function tidak diuba
   border-radius: 12px;
   font-weight: 600;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 .mode-btn.active{
-  background: #fff;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+  background: #062b49;
+  color: #fff;
+  border-color: #062b49;
+  box-shadow: 0 6px 14px rgba(6,43,73,0.25);
 }
 .mode-btn:disabled{
   opacity: 0.55;
