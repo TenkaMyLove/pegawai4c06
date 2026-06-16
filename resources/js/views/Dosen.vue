@@ -1736,12 +1736,23 @@ function normalizeKelas(item) {
   }
 }
 
-// Convert an ISO/UTC timestamp string to local WIB time displayed as HH:MM:SS.
-// If the value looks like a plain time (HH:MM or HH:MM:SS) it is returned as-is.
+// Convert an ISO/UTC timestamp string or raw UTC time string to local WIB time (GMT+8) displayed as HH:MM:SS.
 function formatJam(raw) {
   if (!raw) return ''
   const s = String(raw).trim()
-  if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(s)) return s
+  
+  if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(s)) {
+    const parts = s.split(':')
+    const hours = parseInt(parts[0], 10)
+    const minutes = parseInt(parts[1], 10)
+    const seconds = parts[2] ? parseInt(parts[2], 10) : 0
+    
+    const d = new Date()
+    d.setUTCHours(hours, minutes, seconds)
+    
+    return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
+  }
+  
   const d = new Date(s)
   if (isNaN(d.getTime())) return s
   return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
@@ -2767,9 +2778,9 @@ async function simpanPresensiDosen() {
 
   const isPulang = modePresensi.value === 'pulang'
 
-  // Backup endpoints (akufarish) jika primary (rifkiaja) gagal
-  const BACKUP_MASUK  = 'https://api-pegawai-4c.akufarish.my.id:9001/pegawai/absensi/masuk'
-  const BACKUP_KELUAR = 'https://api-pegawai-4c.akufarish.my.id:9001/pegawai/absensi/keluar'
+  // Local proxy endpoints used as fallback to avoid direct cross-origin errors
+  const BACKUP_MASUK  = '/api/pegawai/absensi/masuk'
+  const BACKUP_KELUAR = '/api/pegawai/absensi/keluar'
 
   // Dapatkan token lokal dari localStorage untuk authentikasi fallback
   const localToken = localStorage.getItem('simpadu_token')
