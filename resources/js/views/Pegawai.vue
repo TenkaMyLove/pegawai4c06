@@ -350,6 +350,7 @@ function normalizeProfile(p) {
     nama: toText(obj.nama) || toText(obj.nama_pegawai) || toText(obj.NAMA_PEGAWAI) || toText(obj.name) || '',
     nip: toText(obj.nip) || toText(obj.NIP) || toText(obj.username) || toText(obj.id) || '',
     nik: toText(obj.nik) || toText(obj.NIK) || '',
+    jenis_kelamin: toText(obj.jenis_kelamin) || toText(obj.JENIS_KELAMIN) || toText(obj.jk) || toText(obj.JK) || '',
     email: toText(obj.email) || toText(obj.EMAIL) || toText(obj.email_pegawai) || toText(obj.EMAIL_PEGAWAI) || '',
     alamat: toText(obj.alamat) || toText(obj.ALAMAT) || '',
     // jabatan kadang berupa object (mis: {nama_jabatan: '...'}), maka wajib dinormalisasi ke string
