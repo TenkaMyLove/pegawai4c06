@@ -50,9 +50,15 @@ const ENDPOINTS = {
   },
 
   nilai: {
-    index: '/api/nilai',
-    store: '/api/nilai',
-    settings: '/api/nilai/settings',
+    index: 'https://api-admin-4c.rifkiaja.my.id:9002/api/akademik/nilai',
+    store: 'https://api-admin-4c.rifkiaja.my.id:9002/api/akademik/nilai',
+    update: (id) => `https://api-admin-4c.rifkiaja.my.id:9002/api/akademik/nilai/${id}`,
+    delete: (id) => `https://api-admin-4c.rifkiaja.my.id:9002/api/akademik/nilai/${id}`,
+  },
+
+  akademik: {
+    kelasMk: 'https://api-admin-4c.rifkiaja.my.id:9002/api/akademik/kelas-mk',
+    kelasMaster: 'https://api-admin-4c.rifkiaja.my.id:9002/api/akademik/kelas-master',
   },
 
   absensi: {

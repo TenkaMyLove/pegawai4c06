@@ -517,38 +517,49 @@
         </div>
       </section>
 
-            <!-- INPUT NILAI -->
+      <!-- INPUT NILAI -->
       <section v-else-if="page === 'nilai'" class="page-section">
         <div class="content-header">
           <div>
             <h2>Input Nilai Mahasiswa</h2>
-
+            <p class="content-subtitle">Pilih kelas &amp; mata kuliah, lalu input nilai per mahasiswa.</p>
           </div>
-
-          <button class="refresh-btn" type="button" @click="refreshData">
-            Refresh Data
-          </button>
         </div>
 
         <div class="nilai-layout">
           <div class="white-card nilai-form-card">
             <h3>Form Input Nilai</h3>
 
-            <div class="nilai-id-grid">
-              <label>
-                <span>ID Kelas</span>
-                <input :value="NILAI_ID_KELAS" type="text" disabled />
-              </label>
+            <!-- Step 1: Pilih Kelas MK -->
+            <label class="nilai-label">Pilih Kelas &amp; Mata Kuliah</label>
+            <select
+              v-model="selectedKelasMkId"
+              class="nilai-input"
+              :disabled="nilaiLoadingKelas"
+              @change="onKelasMkChange"
+            >
+              <option value="">{{ nilaiLoadingKelas ? 'Memuat data kelas...' : 'Pilih kelas & mata kuliah' }}</option>
+              <option
+                v-for="km in kelasMkList"
+                :key="km.id_kelas_mk"
+                :value="km.id_kelas_mk"
+              >
+                {{ km.kelas.kelas_nama }} — {{ km.kurikulum_mk.mata_kuliah.nama_mk }}
+              </option>
+            </select>
 
-              <label>
-                <span>ID MK</span>
-                <input :value="NILAI_ID_MK" type="text" disabled />
-              </label>
-            </div>
 
+            <!-- Step 2: Pilih Mahasiswa -->
             <label class="nilai-label">Pilih Mahasiswa</label>
-            <select v-model="nilaiForm.nim" class="nilai-input" @change="pilihMahasiswaNilai">
-              <option value="">Pilih mahasiswa</option>
+            <select
+              v-model="nilaiForm.nim"
+              class="nilai-input"
+              :disabled="!selectedKelasMkId || nilaiLoadingMaster"
+              @change="pilihMahasiswaNilai"
+            >
+              <option value="">
+                {{ !selectedKelasMkId ? 'Pilih kelas dulu' : nilaiLoadingMaster ? 'Memuat mahasiswa...' : 'Pilih mahasiswa' }}
+              </option>
               <option
                 v-for="peserta in pesertaNilai"
                 :key="peserta._key"
@@ -627,7 +638,7 @@
                 <div class="nilai-info">
                   <strong>{{ item.nama || '-' }}</strong>
                   <p>
-                    {{ item.nim || '-' }} · id_kelas {{ item.id_kelas || NILAI_ID_KELAS }} · id_mk {{ item.id_mk || NILAI_ID_MK }}
+                    {{ item.nim || '-' }}
                   </p>
                 </div>
 
@@ -1031,8 +1042,20 @@ const presensiHariIni = ref(null)
 const selectedKelasId = ref('')
 const pertemuanKe = ref(1)
 
-const NILAI_ID_KELAS = '1'
-const NILAI_ID_MK = '1'
+// Nilai page state – driven by kelas-mk & kelas-master endpoints
+const kelasMkList = ref([])
+const kelasMasterList = ref([])
+const selectedKelasMkId = ref('')
+const nilaiLoadingKelas = ref(false)
+const nilaiLoadingMaster = ref(false)
+
+const selectedKelasMkObj = computed(() =>
+  kelasMkList.value.find((km) => String(km.id_kelas_mk) === String(selectedKelasMkId.value)) || null
+)
+
+// Legacy constants kept for backward-compat in normalizeKelas / normalizeNilai
+const NILAI_ID_KELAS = computed(() => String(selectedKelasMkObj.value?.id_kelas || '1'))
+const NILAI_ID_MK = computed(() => String(selectedKelasMkObj.value?.kurikulum_mk?.id_mk || '1'))
 
 const NILAI_MAHASISWA_DEFAULT = [
   {
@@ -1093,8 +1116,6 @@ const NILAI_MAHASISWA_DEFAULT = [
 ]
 
 const nilaiForm = ref({
-  id_kelas: NILAI_ID_KELAS,
-  id_mk: NILAI_ID_MK,
   nim: '',
   nama: '',
   participation_score: '',
@@ -1324,27 +1345,27 @@ const kelasNilaiDipilih = computed(() => {
 })
 
 const pesertaNilai = computed(() => {
-  const pesertaDariKelas = Array.isArray(kelasNilaiDipilih.value?.peserta)
-    ? kelasNilaiDipilih.value.peserta
-    : []
+  // Use kelas-master data filtered by selected kelas; fall back to dummy if not loaded yet
+  const pesertaDariMaster = kelasMasterList.value
+    .filter((km) => String(km.id_kelas) === String(selectedKelasMkObj.value?.id_kelas))
+    .map((km, index) => ({
+      _key: km.nim || `nilai-peserta-${index}`,
+      nim: km.nim || '',
+      nama: km.nama_mahasiswa || km.nim || `Mahasiswa ${index + 1}`,
+      participation_score: 0,
+      assignment_score: 0,
+      quiz_score: 0,
+      uts_score: 0,
+      uas_score: 0,
+      final_score: 0,
+      grade: null,
+    }))
 
-  const peserta = pesertaDariKelas.length > 0
-    ? pesertaDariKelas
-    : NILAI_MAHASISWA_DEFAULT
+  const peserta = pesertaDariMaster.length > 0
+    ? pesertaDariMaster
+    : (selectedKelasMkId.value ? [] : NILAI_MAHASISWA_DEFAULT)
 
-  return peserta.map((item, index) => ({
-    ...item,
-    _key: item._key || item.nim || `nilai-peserta-${index}`,
-    nim: item.nim || item.NIM || '',
-    nama: item.nama || item.nama_mahasiswa || item.name || `Mahasiswa ${index + 1}`,
-    participation_score: Number(item.participation_score || 0),
-    assignment_score: Number(item.assignment_score || 0),
-    quiz_score: Number(item.quiz_score || 0),
-    uts_score: Number(item.uts_score || 0),
-    uas_score: Number(item.uas_score || 0),
-    final_score: Number(item.final_score || 0),
-    grade: item.grade || null,
-  }))
+  return peserta
 })
 
 const nilaiAkhir = computed(() => {
@@ -1413,7 +1434,7 @@ function getApiIdKelas(kelas) {
     kelas?.id_kelas ||
       kelas?.kelas_id ||
       kelas?.id ||
-      NILAI_ID_KELAS
+      NILAI_ID_KELAS.value
   ).trim()
 }
 
@@ -1423,7 +1444,7 @@ function getApiIdMk(kelas) {
       kelas?.mk_id ||
       kelas?.mata_kuliah_id ||
       kelas?.id_matkul ||
-      NILAI_ID_MK
+      NILAI_ID_MK.value
   ).trim()
 }
 
@@ -1699,8 +1720,8 @@ function normalizeKelas(item) {
   return {
     ...item,
     id,
-    id_kelas: String(item.id_kelas || item.kelas_id || id || NILAI_ID_KELAS).trim(),
-    id_mk: String(item.id_mk || item.mk_id || item.mata_kuliah_id || item.id_matkul || item.kode_mk || NILAI_ID_MK).trim(),
+    id_kelas: String(item.id_kelas || item.kelas_id || id || NILAI_ID_KELAS.value).trim(),
+    id_mk: String(item.id_mk || item.mk_id || item.mata_kuliah_id || item.id_matkul || item.kode_mk || NILAI_ID_MK.value).trim(),
     id_kelas_session: item.id_kelas_session || item.kelas_session_id || item.session_id || '',
     kode_pertemuan: item.kode_pertemuan || item.pertemuan || 1,
     _key: String(id || item.nama || item.nama_kelas || item.mata_kuliah || Math.random()),
@@ -1797,9 +1818,9 @@ function normalizeNilai(item, index = 0) {
     ...item,
     _key: item._key || item.id || `${item.nim || 'nilai'}-${index}-${Date.now()}`,
     id_dosen: item.id_dosen || item.dosen_id || getDosenId(),
-    id_kelas: item.id_kelas || item.kelas_id || NILAI_ID_KELAS,
-    id_mk: item.id_mk || item.mk_id || item.kode_mk || NILAI_ID_MK,
-    nama_kelas: item.nama_kelas || item.kelas || item.mata_kuliah || `Kelas ${NILAI_ID_KELAS}`,
+    id_kelas: item.id_kelas || item.kelas_id || NILAI_ID_KELAS.value,
+    id_mk: item.id_mk || item.mk_id || item.kode_mk || NILAI_ID_MK.value,
+    nama_kelas: item.nama_kelas || item.kelas || item.mata_kuliah || `Kelas ${NILAI_ID_KELAS.value}`,
     nim: item.nim || item.NIM || item.mahasiswa_nim || '',
     nama: item.nama || item.nama_mahasiswa || item.mahasiswa_nama || item.name || '',
     participation_score: Number(item.participation_score ?? item.partisipasi ?? 0),
@@ -2533,28 +2554,89 @@ async function ambilPresensiHariIni(tampilkanPesan = false) {
   }
 }
 
+async function ambilKelasMk() {
+  nilaiLoadingKelas.value = true
+  try {
+    const token = await getRifkiToken()
+    const response = await fetch(ENDPOINTS.akademik.kelasMk, {
+      headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
+    })
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    const json = await response.json()
+    kelasMkList.value = Array.isArray(json.data) ? json.data : []
+  } catch (e) {
+    console.warn('Gagal ambil kelas-mk:', e)
+    kelasMkList.value = []
+  } finally {
+    nilaiLoadingKelas.value = false
+  }
+}
+
+async function ambilKelasMasterByKelas(idKelas) {
+  if (!idKelas) { kelasMasterList.value = []; return }
+  nilaiLoadingMaster.value = true
+  try {
+    const token = await getRifkiToken()
+    const response = await fetch(ENDPOINTS.akademik.kelasMaster, {
+      headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
+    })
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    const json = await response.json()
+    const allMaster = Array.isArray(json.data) ? json.data : []
+    kelasMasterList.value = allMaster.filter(
+      (km) => String(km.id_kelas) === String(idKelas)
+    )
+  } catch (e) {
+    console.warn('Gagal ambil kelas-master:', e)
+    kelasMasterList.value = []
+  } finally {
+    nilaiLoadingMaster.value = false
+  }
+}
+
+async function onKelasMkChange() {
+  nilaiForm.value.nim = ''
+  nilaiForm.value.nama = ''
+  nilaiForm.value.participation_score = ''
+  nilaiForm.value.assignment_score = ''
+  nilaiForm.value.quiz_score = ''
+  nilaiForm.value.uts_score = ''
+  nilaiForm.value.uas_score = ''
+  daftarNilai.value = []
+  if (selectedKelasMkId.value) {
+    await ambilKelasMasterByKelas(selectedKelasMkObj.value?.id_kelas)
+    await ambilDaftarNilai(false)
+  } else {
+    kelasMasterList.value = []
+  }
+}
+
 async function ambilDaftarNilai(tampilkanPesan = false) {
+  if (!selectedKelasMkObj.value) {
+    daftarNilai.value = []
+    return
+  }
+
   loading.value = true
 
   try {
-    const response = await api.get(NILAI_ENDPOINT, {
-      params: {
-        id_kelas: NILAI_ID_KELAS,
-        id_mk: NILAI_ID_MK,
-      },
+    const token = await getRifkiToken()
+    const response = await fetch(ENDPOINTS.nilai.index, {
+      headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
     })
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    const json = await response.json()
+    const apiData = Array.isArray(json.data) ? json.data : []
 
-    const apiData = ambilArray(response)
-    const nilaiDariApi = apiData.length > 0 ? apiData : NILAI_MAHASISWA_DEFAULT
+    // Filter to only nilai matching current id_mk
+    const idMk = String(selectedKelasMkObj.value.kurikulum_mk.id_mk)
+    const filtered = apiData.filter((item) => String(item.id_mk) === idMk)
 
-    daftarNilai.value = nilaiDariApi.map((item, index) => normalizeNilai(item, index))
+    daftarNilai.value = filtered.map((item, index) => normalizeNilai(item, index))
   } catch (e) {
     const localData = ambilNilaiLokal()
-    const nilaiFallback = localData.length > 0 ? localData : NILAI_MAHASISWA_DEFAULT
-
-    daftarNilai.value = nilaiFallback.map((item, index) => normalizeNilai(item, index))
-
-    if (tampilkanPesan && daftarNilai.value.length === 0) {
+    daftarNilai.value = localData.map((item, index) => normalizeNilai(item, index))
+    if (tampilkanPesan) {
       setMessage('info', 'Data nilai dari API belum bisa dimuat.')
     }
   } finally {
@@ -2846,8 +2928,6 @@ async function simpanPresensiDosen() {
 }
 
 function pilihKelasNilai() {
-  nilaiForm.value.id_kelas = NILAI_ID_KELAS
-  nilaiForm.value.id_mk = NILAI_ID_MK
   nilaiForm.value.nim = ''
   nilaiForm.value.nama = ''
 }
@@ -2866,75 +2946,101 @@ function pilihMahasiswaNilai() {
 }
 
 async function simpanNilaiMahasiswa() {
+  if (!selectedKelasMkId.value) {
+    setMessage('error', 'Pilih kelas & mata kuliah terlebih dahulu.')
+    return
+  }
   if (!nilaiForm.value.nim) {
     setMessage('error', 'Pilih mahasiswa terlebih dahulu.')
     return
   }
 
   loading.value = true
-  setMessage('', '')
 
-  const nilaiItem = {
-    nim: String(nilaiForm.value.nim || ''),
+  const totalNilai = Number(nilaiAkhir.value || 0)
+  const nilaiHuruf = gradeNilai.value || 'E'
+  const idMk = Number(selectedKelasMkObj.value?.kurikulum_mk?.id_mk || 0)
+  const nim = String(nilaiForm.value.nim || '')
+
+  // Payload matching the real database schema expected by Rifki API validation
+  const payload = {
+    id_dosen: getDosenId(),
+    nim: nim,
+    id_kelas: Number(selectedKelasMkObj.value?.id_kelas || 0),
+    id_mk: idMk,
     participation_score: Number(nilaiForm.value.participation_score || 0),
     assignment_score: Number(nilaiForm.value.assignment_score || 0),
     quiz_score: Number(nilaiForm.value.quiz_score || 0),
     uts_score: Number(nilaiForm.value.uts_score || 0),
     uas_score: Number(nilaiForm.value.uas_score || 0),
-  }
-
-  const payload = {
-    id_kelas: String(nilaiForm.value.id_kelas || NILAI_ID_KELAS),
-    id_mk: String(nilaiForm.value.id_mk || NILAI_ID_MK),
-    data: [nilaiItem],
+    final_score: totalNilai,
+    grade: nilaiHuruf,
   }
 
   try {
-    const response = await api.post(ENDPOINTS?.nilai?.store || '/api/nilai', payload)
+    const token = await getRifkiToken()
+    const response = await fetch(ENDPOINTS.nilai.store, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    })
+    if (!response.ok) {
+      const errorJson = await response.json().catch(() => ({}))
+      console.error('API Error Response:', errorJson)
+      throw new Error(errorJson.message || `HTTP ${response.status}: ${JSON.stringify(errorJson)}`)
+    }
+    const json = await response.json()
 
     const nilaiBaru = normalizeNilai({
-      _key: `nilai-${nilaiItem.nim}-${Date.now()}`,
-      ...nilaiItem,
-      id_kelas: payload.id_kelas,
-      id_mk: payload.id_mk,
-      final_score: Number(nilaiAkhir.value || 0),
-      grade: gradeNilai.value || null,
+      _key: `nilai-${nim}-${Date.now()}`,
+      nim,
+      id_mk: idMk,
+      id_kelas: selectedKelasMkObj.value?.id_kelas,
+      final_score: totalNilai,
+      grade: nilaiHuruf,
       nama: nilaiForm.value.nama || '',
-      nama_kelas: `Kelas ${NILAI_ID_KELAS}`,
-      ...(response?.data?.data || {}),
+      nama_kelas: selectedKelasMkObj.value?.kelas?.kelas_nama || '',
+      ...(json?.data || {}),
     })
 
     daftarNilai.value = [
       nilaiBaru,
-      ...daftarNilai.value.filter((item) => String(item.nim) !== String(nilaiItem.nim)),
+      ...daftarNilai.value.filter((item) => String(item.nim) !== nim),
     ]
-
     simpanNilaiLokal(daftarNilai.value)
     resetNilaiForm()
-
-    setMessage('success', response?.data?.message || 'Nilai mahasiswa berhasil disimpan.')
+    setMessage('success', json?.message || 'Nilai mahasiswa berhasil disimpan.')
   } catch (e) {
-    const nilaiBaru = normalizeNilai({
-      _key: `nilai-local-${nilaiItem.nim}-${Date.now()}`,
-      ...nilaiItem,
-      id_kelas: payload.id_kelas,
-      id_mk: payload.id_mk,
-      final_score: Number(nilaiAkhir.value || 0),
-      grade: gradeNilai.value || null,
-      nama: nilaiForm.value.nama || '',
-      nama_kelas: `Kelas ${NILAI_ID_KELAS}`,
-      created_at: new Date().toLocaleString('id-ID'),
-    })
-
-    daftarNilai.value = [
-      nilaiBaru,
-      ...daftarNilai.value.filter((item) => String(item.nim) !== String(nilaiItem.nim)),
-    ]
-
-    simpanNilaiLokal(daftarNilai.value)
-    resetNilaiForm()
-
-    setMessage('info', 'API nilai belum bisa diakses. Nilai disimpan sementara di browser.')
+    console.error('Failed to save grade via API:', e)
+    
+    // Check if the error message is a validation error or contains message detail
+    const errorMsg = e.toString() || ''
+    if (errorMsg.includes('Validation error') || errorMsg.includes('409') || errorMsg.includes('sudah ada')) {
+      setMessage('error', 'Nilai untuk Mahasiswa tersebut sudah ada.')
+    } else {
+      const nilaiBaru = normalizeNilai({
+        _key: `nilai-local-${nim}-${Date.now()}`,
+        nim,
+        id_mk: idMk,
+        id_kelas: selectedKelasMkObj.value?.id_kelas,
+        final_score: totalNilai,
+        grade: nilaiHuruf,
+        nama: nilaiForm.value.nama || '',
+        nama_kelas: selectedKelasMkObj.value?.kelas?.kelas_nama || '',
+        created_at: new Date().toLocaleString('id-ID'),
+      })
+      daftarNilai.value = [
+        nilaiBaru,
+        ...daftarNilai.value.filter((item) => String(item.nim) !== nim),
+      ]
+      simpanNilaiLokal(daftarNilai.value)
+      resetNilaiForm()
+      setMessage('info', 'API nilai belum bisa diakses. Nilai disimpan sementara di browser.')
+    }
   } finally {
     loading.value = false
   }
@@ -3126,8 +3232,7 @@ function closeKrsDetail() {
 }
 
 function resetNilaiForm() {
-  nilaiForm.value.id_kelas = NILAI_ID_KELAS
-  nilaiForm.value.id_mk = NILAI_ID_MK
+  // Keep the selected kelas & mk; only reset student-level fields
   nilaiForm.value.nim = ''
   nilaiForm.value.nama = ''
   nilaiForm.value.participation_score = ''
@@ -3154,8 +3259,7 @@ async function refreshData() {
   }
 
   if (props.page === 'nilai') {
-    await ambilKelasSaya()
-    await ambilDaftarNilai(false)
+    await ambilKelasMk()
     return
   }
 
@@ -4371,6 +4475,45 @@ watch(
 .nilai-input {
   height: 48px;
 }
+
+/* Info chips shown after selecting kelas-mk */
+.nilai-info-row {
+  grid-template-columns: repeat(3, 1fr);
+  background: #f0f7ff;
+  border: 1px solid #c7dff5;
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 4px;
+}
+
+.nilai-info-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nilai-info-chip small {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #64748b;
+  letter-spacing: 0.04em;
+}
+
+.nilai-info-chip b {
+  font-size: 13px;
+  color: #0f2a47;
+  font-weight: 800;
+}
+
+/* subtitle below h2 in content-header */
+.content-subtitle {
+  font-size: 13px;
+  color: #64748b;
+  margin: 4px 0 0;
+  font-weight: 400;
+}
+
 
 .nilai-grid {
   margin-top: 18px;
