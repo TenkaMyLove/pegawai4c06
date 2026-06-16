@@ -3307,6 +3307,7 @@ async function saveProfile() {
     await api.put(ENDPOINTS.pegawai.updateProfile, {
       alamat: profileForm.value.alamat || '',
       jenis_kelamin: profileForm.value.jenis_kelamin || 'L',
+      email: profileForm.value.email || '',
     })
     setMessage('success', 'Profil berhasil diperbarui. Email dan alamat berhasil disimpan.')
   } catch {

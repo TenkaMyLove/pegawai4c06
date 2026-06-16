@@ -1207,15 +1207,39 @@ function normalizePegawai(item, index = 0) {
   }
 }
 
+// Convert an ISO/UTC timestamp string or raw UTC time string to local WIB time (GMT+8) displayed as HH:MM:SS.
+function formatJam(raw) {
+  if (!raw) return ''
+  const s = String(raw).trim()
+  
+  if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(s)) {
+    const parts = s.split(':')
+    const hours = parseInt(parts[0], 10)
+    const minutes = parseInt(parts[1], 10)
+    const seconds = parts[2] ? parseInt(parts[2], 10) : 0
+    
+    const d = new Date()
+    d.setUTCHours(hours, minutes, seconds)
+    
+    return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
+  }
+  
+  const d = new Date(s)
+  if (isNaN(d.getTime())) return s
+  return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
+}
+
 function normalizePresensi(item, index = 0) {
   const tanggal =
+    item.TANGGAL ||
     item.tanggal ||
     item.tanggal_absen ||
     item.tgl ||
     item.created_at ||
     new Date().toLocaleDateString('id-ID')
 
-  const waktuMasuk =
+  const rawMasuk =
+    item.WAKTU_MASUK ||
     item.waktu_masuk ||
     item.jam_masuk ||
     item.check_in ||
@@ -1225,7 +1249,8 @@ function normalizePresensi(item, index = 0) {
     item.waktuMasuk ||
     ''
 
-  const waktuKeluar =
+  const rawKeluar =
+    item.WAKTU_KELUAR ||
     item.waktu_keluar ||
     item.jam_keluar ||
     item.check_out ||
@@ -1234,6 +1259,9 @@ function normalizePresensi(item, index = 0) {
     item.pulang ||
     item.waktuKeluar ||
     ''
+
+  const waktuMasuk = formatJam(rawMasuk)
+  const waktuKeluar = formatJam(rawKeluar)
 
   // Support struktur dosen (beberapa backend mengirim id_dosen/nama_dosen)
   const idDosen =
@@ -1933,6 +1961,7 @@ async function saveProfile() {
     await api.put(ENDPOINTS.pegawai.updateProfile, {
       alamat: profileForm.alamat || '',
       jenis_kelamin: profileForm.jenis_kelamin || 'L',
+      email: profileForm.email || '',
     })
     pushLog('Admin memperbarui profil melalui API', 'CRUD')
     setMessage('success', 'Profil berhasil diperbarui.')
@@ -3406,11 +3435,14 @@ textarea {
   color: #0f172a;
   cursor: pointer;
   box-shadow: 0 10px 20px rgba(15, 23, 42, 0.06);
+  transition: all 0.2s ease;
 }
 
 .presensi-mode-btn.active {
-  border-color: #cbd5e1;
-  background: #ffffff;
+  background: #062b49;
+  border-color: #062b49;
+  color: #ffffff;
+  box-shadow: 0 6px 14px rgba(6, 43, 73, 0.25);
 }
 
 .presensi-mode-btn:disabled {
